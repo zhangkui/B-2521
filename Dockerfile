@@ -8,7 +8,7 @@ RUN npm ci --registry=https://registry.npmmirror.com
 
 COPY . .
 
-RUN npm run build
+RUN npm run build:docker
 
 FROM nginx:alpine
 
