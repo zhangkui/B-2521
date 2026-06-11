@@ -1,0 +1,223 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+html.dark {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.7), 0 2px 4px -2px rgb(0 0 0 / 0.7);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.8), 0 4px 6px -4px rgb(0 0 0 / 0.8);
+
+  /* Element Plus Dark Mode Vars Mapping */
+  --el-bg-color: var(--background);
+  --el-bg-color-page: var(--background);
+  --el-bg-color-overlay: var(--surface);
+  --el-text-color-primary: var(--text-main);
+  --el-text-color-regular: var(--text-main);
+  --el-text-color-secondary: var(--text-muted);
+  --el-text-color-placeholder: var(--text-muted);
+  --el-border-color: var(--border);
+  --el-border-color-light: var(--border);
+  --el-border-color-lighter: var(--border);
+  --el-fill-color-blank: var(--surface);
+  --el-fill-color: var(--background);
+  --el-fill-color-light: var(--background);
+  --el-box-shadow-light: var(--shadow-md);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--background);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+}
+
+#app {
+  height: 100vh;
+}
+
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition:
+    background 0.3s,
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+
+html.dark .glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--primary);
+  --el-button-border-color: var(--primary);
+  --el-button-hover-bg-color: var(--primary-light);
+  --el-button-hover-border-color: var(--primary-light);
+}
+
+body .el-button--danger {
+  --el-button-bg-color: var(--danger);
+  --el-button-border-color: var(--danger);
+  --el-button-hover-bg-color: #f87171;
+  --el-button-hover-border-color: #f87171;
+  --el-button-active-bg-color: #dc2626;
+  --el-button-active-border-color: #dc2626;
+  color: #fff;
+}
+
+/* Global Dialog & Message Box Overrides for Premium Feel */
+body .el-dialog {
+  border-radius: 24px;
+  padding: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+body .el-dialog__header {
+  padding: 24px 24px 10px;
+  margin-right: 0;
+}
+
+body .el-dialog__title {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+body .el-dialog__body {
+  padding: 20px 24px;
+  color: var(--text-main);
+}
+
+body .el-dialog__footer {
+  padding: 10px 24px 24px;
+}
+
+body .el-message-box {
+  border-radius: 20px;
+  padding: 12px;
+  border: none;
+}
+
+body .el-message-box__header {
+  padding: 20px 24px 10px;
+}
+
+body .el-message-box__title {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+body .el-message-box__content {
+  padding: 16px 24px 20px;
+}
+
+body .el-message-box__container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+body .el-message-box__status {
+  font-size: 32px;
+  position: static;
+  transform: none;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+body .el-message-box__message {
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  font-weight: 500;
+  flex: 1;
+}
+
+body .el-message-box__btns {
+  padding: 10px 24px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+body .el-message-box__btns button {
+  padding: 10px 24px;
+  height: 42px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-left: 0;
+}
