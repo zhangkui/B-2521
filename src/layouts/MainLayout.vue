@@ -47,13 +47,13 @@
             <div class="avatar-wrapper">
               <el-avatar
                 :size="42"
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                :src="avatarSrc"
                 class="user-avatar"
               />
             </div>
             <div class="user-info-text">
               <span class="user-name">{{ username }}</span>
-              <div class="user-badge">Premium Elite</div>
+              <div class="user-badge">已登录</div>
             </div>
           </div>
           <el-button link @click="handleLogout" class="logout-btn">
@@ -77,40 +77,6 @@
           <h2 class="page-title">{{ pageTitle }}</h2>
         </div>
         <div class="header-right">
-          <el-popover
-            placement="bottom-end"
-            :width="320"
-            trigger="click"
-            popper-class="notification-popper"
-          >
-            <template #reference>
-              <el-badge :value="2" class="notif-badge" :hidden="!hasUnread">
-                <el-button circle class="icon-btn">
-                  <el-icon><lucide-icon name="Bell" /></el-icon>
-                </el-button>
-              </el-badge>
-            </template>
-            <div class="notif-content">
-              <div class="notif-header">
-                <span>消息通知</span>
-                <el-button link type="primary" size="small" @click="clearNotifs"
-                  >全部已读</el-button
-                >
-              </div>
-              <div class="notif-list" v-if="notifications.length">
-                <div v-for="n in notifications" :key="n.id" class="notif-item">
-                  <div class="notif-icon" :class="n.type">
-                    <lucide-icon :name="n.icon" :size="14" />
-                  </div>
-                  <div class="notif-info">
-                    <p class="notif-text">{{ n.text }}</p>
-                    <span class="notif-time">{{ n.time }}</span>
-                  </div>
-                </div>
-              </div>
-              <el-empty v-else description="暂无新通知" :image-size="60" />
-            </div>
-          </el-popover>
           <el-button circle class="icon-btn" @click="settingsVisible = true">
             <el-icon><lucide-icon name="Settings" /></el-icon>
           </el-button>
@@ -131,7 +97,6 @@
     </el-container>
   </el-container>
 
-  <!-- Mobile Sidebar Drawer -->
   <el-drawer
     v-model="mobileMenuVisible"
     direction="ltr"
@@ -178,13 +143,13 @@
           <div class="avatar-wrapper">
             <el-avatar
               :size="42"
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+              :src="avatarSrc"
               class="user-avatar"
             />
           </div>
           <div class="user-info-text">
             <span class="user-name">{{ username }}</span>
-            <div class="user-badge">Premium Elite</div>
+            <div class="user-badge">已登录</div>
           </div>
         </div>
         <el-button link @click="handleLogout" class="logout-btn">
@@ -195,9 +160,7 @@
     </div>
   </el-drawer>
 
-  <!-- Quick Add Dialog -->
   <QuickAddDialog v-model="quickAddVisible" />
-  <!-- Settings Dialog -->
   <SettingsDialog
     v-model="settingsVisible"
     :initial-sidebar-collapse="isCollapse"
@@ -209,28 +172,42 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import LucideIcon from "../components/LucideIcon.vue";
 import QuickAddDialog from "../components/QuickAddDialog.vue";
 import SettingsDialog from "../components/SettingsDialog.vue";
+import { useAuthStore } from "../store/auth";
+import { useFinanceStore } from "../store/finance";
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const financeStore = useFinanceStore();
+
 const isCollapse = ref(localStorage.getItem("sidebarCollapse") === "true");
 const isDarkMode = ref(localStorage.getItem("darkMode") === "true");
 const quickAddVisible = ref(false);
 const settingsVisible = ref(false);
 const mobileMenuVisible = ref(false);
 const isMobile = ref(false);
-const hasUnread = ref(true);
+const isLoaded = ref(false);
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 1024;
 };
 
-onMounted(() => {
+onMounted(async () => {
   checkMobile();
   window.addEventListener("resize", checkMobile);
+  try {
+    await financeStore.initialize();
+    await financeStore.loadTransactions();
+    isLoaded.value = true;
+  } catch (err) {
+    console.error("初始化数据失败:", err);
+    ElMessage.error("加载数据失败，请刷新重试");
+    isLoaded.value = true;
+  }
 });
 
 onUnmounted(() => {
@@ -245,7 +222,6 @@ const toggleSidebar = () => {
   }
 };
 
-// Apply saved dark mode on initial load
 if (isDarkMode.value) {
   document.documentElement.classList.add("dark");
 }
@@ -256,8 +232,6 @@ const handleSettingsApplied = (settings: {
 }) => {
   isCollapse.value = settings.sidebarCollapse;
   isDarkMode.value = settings.darkMode;
-
-  // Persist to localStorage
   localStorage.setItem("sidebarCollapse", String(settings.sidebarCollapse));
   localStorage.setItem("darkMode", String(settings.darkMode));
 };
@@ -269,30 +243,6 @@ watch(isDarkMode, (val) => {
     document.documentElement.classList.remove("dark");
   }
 });
-
-const notifications = ref([
-  {
-    id: 1,
-    text: "您的2月预算已使用超过80%",
-    time: "10分钟前",
-    type: "warning",
-    icon: "AlertTriangle",
-  },
-  {
-    id: 2,
-    text: "发现一笔异常的大额支出记录",
-    time: "2小时前",
-    type: "error",
-    icon: "Zap",
-  },
-  {
-    id: 3,
-    text: "欢迎使用智慧记账！",
-    time: "昨天",
-    type: "info",
-    icon: "PartyPopper",
-  },
-]);
 
 const activeRoute = computed(() => route.path);
 const pageTitle = computed(() => {
@@ -306,23 +256,28 @@ const pageTitle = computed(() => {
   return titles[route.path] || "智慧记账";
 });
 
-const username = ref(
-  JSON.parse(localStorage.getItem("totoro_user") || '{"name": "Guest"}').name,
-);
+const username = computed(() => authStore.displayName);
+const avatarSrc = computed(() => {
+  const seed = authStore.user?.username || "user";
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+});
 
-const handleLogout = () => {
-  localStorage.removeItem("totoro_user");
-  router.push("/login");
+const handleLogout = async () => {
+  ElMessageBox.confirm("确定要退出登录吗？", "提示", {
+    confirmButtonText: "确定退出",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(async () => {
+      await authStore.logout();
+      ElMessage.success("已退出登录");
+      router.push("/login");
+    })
+    .catch(() => {});
 };
 
 const openQuickAdd = () => {
   quickAddVisible.value = true;
-};
-
-const clearNotifs = () => {
-  hasUnread.value = false;
-  notifications.value = [];
-  ElMessage.success("已清除所有通知");
 };
 </script>
 
@@ -533,7 +488,7 @@ html.dark .side-menu :deep(.el-menu-item.is-active) {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 16px;
 }
 
 .header-right :deep(.el-button + .el-button) {
@@ -556,31 +511,6 @@ html.dark .side-menu :deep(.el-menu-item.is-active) {
   flex-shrink: 0;
 }
 
-.premium-badge {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 18px;
-  height: 18px;
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
-  border-radius: 50%;
-  border: 2px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-html.dark .user-avatar,
-html.dark .premium-badge {
-  border-color: #1e293b;
-}
-
-html.dark .user-avatar {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
 .add-btn {
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
@@ -597,7 +527,6 @@ html.dark .user-avatar {
   margin-left: 8px;
 }
 
-/* Transition */
 .fade-transform-enter-active,
 .fade-transform-leave-active {
   transition: all 0.3s;
@@ -611,80 +540,6 @@ html.dark .user-avatar {
 .fade-transform-leave-to {
   opacity: 0;
   transform: translateX(15px);
-}
-/* Notification Styles */
-.notif-badge :deep(.el-badge__content) {
-  top: 6px;
-  right: 6px;
-  border: none;
-  background: var(--danger);
-}
-
-.notif-content {
-  padding: 4px;
-}
-
-.notif-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 4px 12px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.notif-item {
-  display: flex;
-  gap: 12px;
-  padding: 12px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-  cursor: pointer;
-}
-
-.notif-item:hover {
-  background: #f8fafc;
-}
-
-.notif-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.notif-icon.info {
-  background: #e0f2fe;
-  color: #0ea5e9;
-}
-.notif-icon.warning {
-  background: #fff7ed;
-  color: #f59e0b;
-}
-.notif-icon.error {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
-.notif-info {
-  flex: 1;
-}
-
-.notif-text {
-  font-size: 0.85rem;
-  color: var(--text-main);
-  margin-bottom: 4px;
-  line-height: 1.4;
-}
-
-.notif-time {
-  font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 .mobile-sidebar-inner {
@@ -716,7 +571,7 @@ html.dark .user-avatar {
   }
 
   .header-right {
-    gap: 20px;
+    gap: 12px;
   }
 
   .page-title {

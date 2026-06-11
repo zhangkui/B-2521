@@ -19,7 +19,7 @@
         :key="acc.id"
         class="account-card"
         :class="{ 'is-hidden': acc.visible === false }"
-        :style="{ '--account-color': acc.color }"
+        :style="{ '--account-color': acc.color || '#6366f1' }"
       >
         <div class="card-bg"></div>
         <div class="card-content">
@@ -63,7 +63,7 @@
             <div class="account-balance">
               <span class="currency">¥</span>
               <span class="amount">{{
-                acc.balance.toLocaleString("zh-CN", {
+                Number(acc.balance).toLocaleString("zh-CN", {
                   minimumFractionDigits: 2,
                 })
               }}</span>
@@ -104,16 +104,18 @@
         </el-form-item>
         <el-form-item label="账户类型">
           <el-select v-model="form.type" style="width: 100%">
-            <el-option label="银行卡" value="bank" />
-            <el-option label="现金" value="cash" />
-            <el-option label="支付宝" value="alipay" />
-            <el-option label="微信" value="wechat" />
-            <el-option label="信用卡" value="credit_card" />
+            <el-option label="储蓄卡" value="BANK_CARD" />
+            <el-option label="现金" value="CASH" />
+            <el-option label="支付宝" value="ALIPAY" />
+            <el-option label="微信支付" value="WECHAT" />
+            <el-option label="信用卡" value="CREDIT_CARD" />
+            <el-option label="投资账户" value="INVESTMENT" />
+            <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
         <el-form-item label="初始金额">
           <el-input-number
-            v-model="form.balance"
+            v-model="form.initialBalance"
             :precision="2"
             style="width: 100%"
           />
@@ -124,7 +126,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveAccount">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="saveAccount">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -135,55 +137,63 @@ import { ref, reactive, computed } from "vue";
 import { useFinanceStore } from "../store/finance";
 import LucideIcon from "../components/LucideIcon.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { AccountType } from "../types";
 
 const financeStore = useFinanceStore();
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const showHidden = ref(false);
+const saving = ref(false);
 
 const visibleAccounts = computed(() => {
   if (showHidden.value) return financeStore.accounts;
   return financeStore.accounts.filter((acc) => acc.visible !== false);
 });
-const currentId = ref("");
+const currentId = ref<number>(0);
 const accountForm = ref();
 
 const form = reactive({
   name: "",
-  type: "bank" as any,
-  balance: 0,
-  color: "#6366f1",
+  type: "BANK_CARD" as AccountType,
+  initialBalance: 0,
+  color: "#6366f1" as string | null,
 });
 
-const getAccountIcon = (type: string) => {
+const getAccountIcon = (type: AccountType) => {
   switch (type) {
-    case "bank":
-      return "Building2";
-    case "cash":
+    case "CASH":
       return "Banknote";
-    case "alipay":
+    case "BANK_CARD":
+      return "Building2";
+    case "CREDIT_CARD":
+      return "CreditCard";
+    case "ALIPAY":
       return "Wallet";
-    case "wechat":
+    case "WECHAT":
       return "MessageCircle";
-    case "credit_card":
-      return "CreditCard";
+    case "INVESTMENT":
+      return "TrendingUp";
+    case "OTHER":
     default:
-      return "CreditCard";
+      return "Wallet";
   }
 };
 
-const getAccountLabel = (type: string) => {
+const getAccountLabel = (type: AccountType) => {
   switch (type) {
-    case "bank":
-      return "储蓄卡";
-    case "cash":
+    case "CASH":
       return "现金资产";
-    case "alipay":
-      return "手机支付";
-    case "wechat":
-      return "社交支付";
-    case "credit_card":
+    case "BANK_CARD":
+      return "储蓄卡";
+    case "CREDIT_CARD":
       return "信用负债";
+    case "ALIPAY":
+      return "支付宝";
+    case "WECHAT":
+      return "微信支付";
+    case "INVESTMENT":
+      return "投资账户";
+    case "OTHER":
     default:
       return "其他";
   }
@@ -192,8 +202,8 @@ const getAccountLabel = (type: string) => {
 const handleAddAccount = () => {
   isEdit.value = false;
   form.name = "";
-  form.balance = 0;
-  form.type = "bank";
+  form.initialBalance = 0;
+  form.type = "BANK_CARD";
   form.color = "#6366f1";
   dialogVisible.value = true;
 };
@@ -202,29 +212,43 @@ const handleEdit = (acc: any) => {
   isEdit.value = true;
   currentId.value = acc.id;
   form.name = acc.name;
-  form.balance = acc.balance;
+  form.initialBalance = acc.initialBalance ?? acc.balance ?? 0;
   form.type = acc.type;
-  form.color = acc.color;
+  form.color = acc.color || "#6366f1";
   dialogVisible.value = true;
 };
 
 const saveAccount = async () => {
   if (!accountForm.value) return;
 
-  await accountForm.value.validate((valid: boolean) => {
-    if (valid) {
-      if (isEdit.value) {
-        financeStore.updateAccount({ ...form, id: currentId.value });
-      } else {
-        financeStore.addAccount({ ...form });
-      }
-      dialogVisible.value = false;
+  try {
+    const valid = await accountForm.value.validate().catch(() => false);
+    if (!valid) return;
+
+    saving.value = true;
+    if (isEdit.value) {
+      await financeStore.updateAccount({
+        ...form,
+        id: currentId.value,
+        color: form.color || undefined,
+      } as any);
+      ElMessage.success("已更新");
+    } else {
+      await financeStore.addAccount({
+        ...form,
+        color: form.color || undefined,
+      });
       ElMessage.success("已保存");
     }
-  });
+    dialogVisible.value = false;
+  } catch (error: any) {
+    ElMessage.error(error.message || "操作失败");
+  } finally {
+    saving.value = false;
+  }
 };
 
-const handleHide = (id: string) => {
+const handleHide = (id: number) => {
   const account = financeStore.accounts.find((a) => a.id === id);
   const isCurrentlyVisible = account?.visible !== false;
 
@@ -244,7 +268,7 @@ const handleHide = (id: string) => {
   });
 };
 
-const handleDelete = (id: string) => {
+const handleDelete = (id: number) => {
   ElMessageBox.confirm(
     "彻底删除后，该账户及其关联的账单流水（可选）将无法恢复，确定吗？",
     "严重警告",
@@ -254,9 +278,13 @@ const handleDelete = (id: string) => {
       type: "error",
       confirmButtonClass: "el-button--danger",
     },
-  ).then(() => {
-    financeStore.deleteAccount(id);
-    ElMessage.success("账户已彻底删除");
+  ).then(async () => {
+    try {
+      await financeStore.deleteAccount(Number(id));
+      ElMessage.success("账户已彻底删除");
+    } catch (error: any) {
+      ElMessage.error(error.message || "删除失败");
+    }
   });
 };
 </script>

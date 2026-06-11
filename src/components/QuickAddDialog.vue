@@ -36,7 +36,7 @@
                 :value="cat.id"
               >
                 <div class="flex items-center gap-2">
-                  <LucideIcon :name="cat.icon" :size="16" :color="cat.color" />
+                  <LucideIcon :name="cat.icon || 'HelpCircle'" :size="16" :color="cat.color || undefined" />
                   <span>{{ cat.name }}</span>
                 </div>
               </el-option>
@@ -84,6 +84,7 @@
         <el-button
           type="primary"
           :disabled="!isFormValid"
+          :loading="submitting"
           @click="handleSubmit"
         >
           保存
@@ -117,23 +118,33 @@ onUnmounted(() => {
 
 const props = defineProps<{
   modelValue: boolean;
-  editData?: any; // Using any to avoid type import issues for now, or use Transaction
+  editData?: any;
 }>();
 
 const emit = defineEmits(["update:modelValue"]);
 
 const financeStore = useFinanceStore();
 
+const submitting = ref(false);
+
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
 
+const defaultCategoryId = computed(() => 
+  financeStore.categories.find((c) => c.type === form.type)?.id ?? 0
+);
+
+const defaultAccountId = computed(() => 
+  financeStore.accounts[0]?.id ?? 0
+);
+
 const form = reactive({
   amount: 0,
   type: "expense" as "income" | "expense",
-  categoryId: "",
-  accountId: financeStore.accounts[0]?.id || "",
+  categoryId: 0 as number,
+  accountId: 0 as number,
   date: dayjs().format("YYYY-MM-DD"),
   note: "",
 });
@@ -145,8 +156,6 @@ const filteredCategories = computed(() =>
 watch(
   () => form.type,
   (newType) => {
-    // Only auto-switch category if we are NOT populating from existing data
-    // OR if the current category doesn't match the new type (manual switch)
     if (
       !props.editData ||
       (props.editData.type !== newType && !form.categoryId)
@@ -156,7 +165,6 @@ watch(
       );
       if (defaultCat) form.categoryId = defaultCat.id;
     } else if (props.editData && props.editData.type !== newType) {
-      // If user switched type manually while editing, we should reset category to default of new type
       const defaultCat = financeStore.categories.find(
         (c) => c.type === newType,
       );
@@ -165,26 +173,24 @@ watch(
   },
 );
 
-// Watch for dialog opening to populate form
 watch(
   () => props.modelValue,
   (val) => {
     if (val && props.editData) {
       form.amount = props.editData.amount;
       form.type = props.editData.type;
-      form.categoryId = props.editData.categoryId;
-      form.accountId = props.editData.accountId;
-      form.date = props.editData.date;
-      form.note = props.editData.note;
+      form.categoryId = Number(props.editData.categoryId);
+      form.accountId = Number(props.editData.accountId);
+      form.date = props.editData.date || dayjs(props.editData.transactionDate || props.editData.createdAt).format("YYYY-MM-DD");
+      form.note = props.editData.note || props.editData.description || "";
     } else if (val) {
-      // Reset to defaults for new entry
       form.amount = 0;
       form.type = "expense";
       form.date = dayjs().format("YYYY-MM-DD");
       form.note = "";
       form.categoryId =
-        financeStore.categories.find((c) => c.type === "expense")?.id || "";
-      form.accountId = financeStore.accounts[0]?.id || "";
+        financeStore.categories.find((c) => c.type === "expense")?.id ?? 0;
+      form.accountId = financeStore.accounts[0]?.id ?? 0;
     }
   },
 );
@@ -193,24 +199,38 @@ const isFormValid = computed(
   () => form.amount > 0 && form.categoryId && form.accountId,
 );
 
-const handleSubmit = () => {
-  if (props.editData) {
-    financeStore.updateTransaction({
-      ...props.editData,
-      ...form,
-    });
-    ElMessage.success("已更新");
-  } else {
-    financeStore.addTransaction({ ...form });
-    ElMessage.success("已保存");
+const handleSubmit = async () => {
+  try {
+    submitting.value = true;
+    if (props.editData) {
+      await financeStore.updateTransaction({
+        ...props.editData,
+        ...form,
+        date: form.date,
+      });
+      ElMessage.success("已更新");
+    } else {
+      await financeStore.addTransaction({
+        amount: form.amount,
+        type: form.type,
+        categoryId: Number(form.categoryId),
+        accountId: Number(form.accountId),
+        date: form.date,
+        note: form.note,
+      });
+      ElMessage.success("已保存");
+    }
+    visible.value = false;
+  } catch (error: any) {
+    ElMessage.error(error.message || "保存失败");
+  } finally {
+    submitting.value = false;
   }
-  visible.value = false;
 };
 
 const handleClosed = () => {
   form.amount = 0;
   form.note = "";
-  // Reset other fields if necessary
 };
 </script>
 
@@ -230,7 +250,6 @@ const handleClosed = () => {
   padding: 0 4px;
 }
 
-/* 简洁滚动条 */
 .dialog-scroll-content::-webkit-scrollbar {
   width: 5px;
 }

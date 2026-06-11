@@ -1,31 +1,98 @@
 export type TransactionType = "income" | "expense";
 
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  type: TransactionType;
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  nickname: string | null;
+  avatar: string | null;
 }
 
+export interface LoginResponse {
+  user: User;
+  token: string;
+}
+
+export type AccountType =
+  | "CASH"
+  | "BANK_CARD"
+  | "CREDIT_CARD"
+  | "ALIPAY"
+  | "WECHAT"
+  | "INVESTMENT"
+  | "OTHER";
+
 export interface Account {
-  id: string;
+  id: number;
+  userId: number;
   name: string;
-  type: "bank" | "cash" | "alipay" | "wechat" | "credit_card";
+  type: AccountType;
   balance: number;
-  color: string;
+  initialBalance: number;
+  currency: string;
+  icon: string | null;
+  color: string | null;
+  description: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
   visible?: boolean;
 }
 
-export interface Transaction {
-  id: string;
-  amount: number;
+export interface Category {
+  id: number;
+  userId: number;
+  name: string;
   type: TransactionType;
-  categoryId: string;
-  accountId: string;
-  date: string;
-  note: string;
-  createdAt: number;
+  icon: string | null;
+  color: string | null;
+  parentId: number | null;
+  sortOrder: number;
+  isSystem: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Transaction {
+  id: number;
+  userId: number;
+  accountId: number;
+  categoryId: number;
+  type: TransactionType;
+  amount: number;
+  description: string | null;
+  note: string | null;
+  transactionDate: string;
+  createdAt: string;
+  updatedAt: string;
+  account?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  };
+  category?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    type: TransactionType;
+  };
+}
+
+export interface Pagination<T> {
+  list: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    netBalance: number;
+  };
 }
 
 export interface Budget {

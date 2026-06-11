@@ -1,11 +1,13 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import MainLayout from "../layouts/MainLayout.vue";
+import { useAuthStore } from "../store/auth";
 
 const routes: RouteRecordRaw[] = [
   {
     path: "/login",
     name: "Login",
     component: () => import("../views/Login.vue"),
+    meta: { public: true },
   },
   {
     path: "/",
@@ -46,13 +48,35 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  const user = localStorage.getItem("totoro_user");
-  if (to.name !== "Login" && !user) {
-    next({ name: "Login" });
-  } else {
-    next();
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+  authStore.restoreAuth();
+
+  if (to.meta.public) {
+    if (authStore.isLoggedIn) {
+      next({ name: "Dashboard" });
+    } else {
+      next();
+    }
+    return;
   }
+
+  if (!authStore.isLoggedIn) {
+    next({ name: "Login" });
+    return;
+  }
+
+  if (!authStore.user) {
+    try {
+      await authStore.fetchProfile();
+    } catch (_) {
+      authStore.logout();
+      next({ name: "Login" });
+      return;
+    }
+  }
+
+  next();
 });
 
 export default router;

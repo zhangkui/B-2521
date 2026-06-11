@@ -9,7 +9,7 @@
         <div class="card-content">
           <span class="label">当前总余额</span>
           <h3 class="value">
-            ¥ {{ financeStore.totalBalance.toLocaleString() }}
+            ¥ {{ Number(financeStore.totalBalance).toLocaleString() }}
           </h3>
           <span class="trend up">
             <lucide-icon name="ArrowUpRight" :size="14" />
@@ -25,7 +25,7 @@
         <div class="card-content">
           <span class="label">本月总收入</span>
           <h3 class="value">
-            ¥ {{ financeStore.totalIncome.toLocaleString() }}
+            ¥ {{ Number(financeStore.totalIncome).toLocaleString() }}
           </h3>
           <span class="trend up">
             <lucide-icon name="ArrowUpRight" :size="14" />
@@ -41,7 +41,7 @@
         <div class="card-content">
           <span class="label">本月总支出</span>
           <h3 class="value">
-            ¥ {{ financeStore.totalExpense.toLocaleString() }}
+            ¥ {{ Number(financeStore.totalExpense).toLocaleString() }}
           </h3>
           <span class="trend down">
             <lucide-icon name="ArrowDownRight" :size="14" />
@@ -98,23 +98,23 @@
             <div
               class="tx-icon"
               :style="{
-                backgroundColor: getCategory(tx.categoryId)?.color + '15',
+                backgroundColor: (getCategory(Number(tx.categoryId))?.color || '#6366f1') + '15',
               }"
             >
               <lucide-icon
-                :name="getCategory(tx.categoryId)?.icon || 'HelpCircle'"
+                :name="getCategory(Number(tx.categoryId))?.icon || 'HelpCircle'"
                 :size="18"
-                :color="getCategory(tx.categoryId)?.color"
+                :color="getCategory(Number(tx.categoryId))?.color || '#6366f1'"
               />
             </div>
             <div class="tx-info">
               <span class="tx-name">{{
-                getCategory(tx.categoryId)?.name
+                getCategory(Number(tx.categoryId))?.name
               }}</span>
-              <span class="tx-date">{{ tx.date }}</span>
+              <span class="tx-date">{{ dayjs(tx.transactionDate || tx.createdAt).format('YYYY-MM-DD') }}</span>
             </div>
             <div class="tx-amount" :class="tx.type">
-              {{ tx.type === "income" ? "+" : "-" }}¥{{ tx.amount.toFixed(2) }}
+              {{ tx.type === "income" ? "+" : "-" }}¥{{ Number(tx.amount).toFixed(2) }}
             </div>
           </div>
           <el-empty
@@ -133,14 +133,15 @@ import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useFinanceStore } from "../store/finance";
 import LucideIcon from "../components/LucideIcon.vue";
 import * as echarts from "echarts";
+import dayjs from "dayjs";
 
 const financeStore = useFinanceStore();
 const chartPeriod = ref("week");
 const lineChartRef = ref<HTMLElement | null>(null);
 let lineChart: echarts.ECharts | null = null;
 
-const getCategory = (id: string) =>
-  financeStore.categories.find((c) => c.id === id);
+const getCategory = (id: number) =>
+  financeStore.categories.find((c) => c.id === Number(id));
 
 const chartData = {
   week: {
@@ -236,13 +237,21 @@ watch(chartPeriod, () => {
   updateChart();
 });
 
-onMounted(() => {
+onMounted(async () => {
   initChart();
-  // Ensure chart takes correct dimensions after layout is settled
   setTimeout(() => {
     lineChart?.resize();
   }, 100);
   window.addEventListener("resize", () => lineChart?.resize());
+
+  if (financeStore.transactions.length === 0 || financeStore.accounts.length === 0) {
+    try {
+      await financeStore.initialize();
+      await financeStore.loadTransactions();
+    } catch (e) {
+      console.error("Failed to load finance data", e);
+    }
+  }
 });
 
 onUnmounted(() => {

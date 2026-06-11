@@ -31,6 +31,7 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             class="date-picker"
+            value-format="YYYY-MM-DD"
           />
         </template>
         <div v-else class="mobile-date-pickers">
@@ -39,6 +40,7 @@
             type="date"
             placeholder="开始日期"
             class="mobile-date-item"
+            value-format="YYYY-MM-DD"
           />
           <span class="date-sep">-</span>
           <el-date-picker
@@ -46,6 +48,7 @@
             type="date"
             placeholder="结束日期"
             class="mobile-date-item"
+            value-format="YYYY-MM-DD"
           />
         </div>
         <el-button-group>
@@ -76,7 +79,7 @@
       >
         <el-table-column label="交易日期" width="120" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-secondary">{{ row.date }}</span>
+            <span class="text-secondary">{{ dayjs(row.transactionDate || row.createdAt).format('YYYY-MM-DD') }}</span>
           </template>
         </el-table-column>
 
@@ -86,17 +89,17 @@
               <div
                 class="cat-icon"
                 :style="{
-                  backgroundColor: getCategory(row.categoryId)?.color + '20',
+                  backgroundColor: (getCategory(Number(row.categoryId))?.color || '#6366f1') + '20',
                 }"
               >
                 <lucide-icon
-                  :name="getCategory(row.categoryId)?.icon || 'HelpCircle'"
+                  :name="getCategory(Number(row.categoryId))?.icon || 'HelpCircle'"
                   :size="16"
-                  :color="getCategory(row.categoryId)?.color"
+                  :color="getCategory(Number(row.categoryId))?.color || '#6366f1'"
                 />
               </div>
               <span class="font-medium">{{
-                getCategory(row.categoryId)?.name
+                getCategory(Number(row.categoryId))?.name
               }}</span>
             </div>
           </template>
@@ -105,14 +108,14 @@
         <el-table-column label="账户" width="120" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{
-              getAccount(row.accountId)?.name
+              getAccount(Number(row.accountId))?.name
             }}</el-tag>
           </template>
         </el-table-column>
 
         <el-table-column label="备注" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-hint">{{ row.note || "-" }}</span>
+            <span class="text-hint">{{ row.note || row.description || "-" }}</span>
           </template>
         </el-table-column>
 
@@ -120,7 +123,7 @@
           <template #default="{ row }">
             <span :class="['amount-cell', row.type]">
               {{ row.type === "income" ? "+" : "-" }} ¥{{
-                row.amount.toFixed(2)
+                Number(row.amount).toFixed(2)
               }}
             </span>
           </template>
@@ -181,34 +184,34 @@
             <div
               class="cat-icon"
               :style="{
-                backgroundColor: getCategory(tx.categoryId)?.color + '20',
+                backgroundColor: (getCategory(Number(tx.categoryId))?.color || '#6366f1') + '20',
               }"
             >
               <lucide-icon
-                :name="getCategory(tx.categoryId)?.icon || 'HelpCircle'"
+                :name="getCategory(Number(tx.categoryId))?.icon || 'HelpCircle'"
                 :size="18"
-                :color="getCategory(tx.categoryId)?.color"
+                :color="getCategory(Number(tx.categoryId))?.color || '#6366f1'"
               />
             </div>
             <div class="mobile-card-info">
               <div class="mobile-info-top">
                 <span class="mobile-cat-name">{{
-                  getCategory(tx.categoryId)?.name
+                  getCategory(Number(tx.categoryId))?.name
                 }}</span>
                 <span :class="['mobile-amount', tx.type]">
                   {{ tx.type === "income" ? "+" : "-"
-                  }}{{ tx.amount.toFixed(2) }}
+                  }}{{ Number(tx.amount).toFixed(2) }}
                 </span>
               </div>
               <div class="mobile-info-bottom">
-                <span class="mobile-note">{{ tx.note || "-" }}</span>
-                <span class="mobile-time">{{ tx.date }}</span>
+                <span class="mobile-note">{{ tx.note || tx.description || "-" }}</span>
+                <span class="mobile-time">{{ dayjs(tx.transactionDate || tx.createdAt).format('YYYY-MM-DD') }}</span>
               </div>
             </div>
           </div>
           <div class="mobile-card-actions">
             <span class="mobile-account-tag">{{
-              getAccount(tx.accountId)?.name
+              getAccount(Number(tx.accountId))?.name
             }}</span>
             <div class="flex gap-2">
               <el-button type="primary" link @click.stop="handleEdit(tx)">
@@ -243,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 
 const isMobile = ref(false);
 const checkMobile = () => {
@@ -268,41 +271,43 @@ const financeStore = useFinanceStore();
 
 const searchQuery = ref("");
 const filterType = ref("");
-const dateRange = ref<[Date, Date] | null>(null);
+const dateRange = ref<[string, string] | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const isRefreshing = ref(false);
 const quickAddVisible = ref(false);
-const editingTransaction = ref<any>(null); // Use any or Transaction type if imported
+const editingTransaction = ref<any>(null);
 
-const getCategory = (id: string) =>
-  financeStore.categories.find((c) => c.id === id);
-const getAccount = (id: string) =>
-  financeStore.accounts.find((a) => a.id === id);
+const getCategory = (id: number) =>
+  financeStore.categories.find((c) => c.id === Number(id));
+const getAccount = (id: number) =>
+  financeStore.accounts.find((a) => a.id === Number(id));
 
 const filteredTransactions = computed(() => {
   return financeStore.transactions
     .filter((tx) => {
+      const txNote = (tx.note || tx.description || "").toLowerCase();
+      const catName = getCategory(Number(tx.categoryId))?.name || "";
       const matchesSearch =
-        tx.note.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        getCategory(tx.categoryId)?.name.includes(searchQuery.value);
+        txNote.includes(searchQuery.value.toLowerCase()) ||
+        catName.includes(searchQuery.value);
       const matchesType = !filterType.value || tx.type === filterType.value;
 
       let matchesDate = true;
       if (dateRange.value && dateRange.value.length === 2) {
-        const start = new Date(dateRange.value[0]).getTime();
-        const end = new Date(dateRange.value[1]).getTime();
-        const txDate = new Date(tx.date).getTime();
+        const start = dayjs(dateRange.value[0]).startOf('day').valueOf();
+        const end = dayjs(dateRange.value[1]).endOf('day').valueOf();
+        const txDate = dayjs(tx.transactionDate || tx.createdAt).valueOf();
         matchesDate = txDate >= start && txDate <= end;
       }
 
       return matchesSearch && matchesType && matchesDate;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = dayjs(a.transactionDate || a.createdAt).valueOf();
+      const dateB = dayjs(b.transactionDate || b.createdAt).valueOf();
       if (dateA !== dateB) return dateB - dateA;
-      return b.createdAt - a.createdAt;
+      return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
     });
 });
 
@@ -312,22 +317,29 @@ const paginatedTransactions = computed(() => {
   return filteredTransactions.value.slice(start, end);
 });
 
-const handleDelete = (id: string) => {
+const handleDelete = (id: number) => {
   ElMessageBox.confirm("确定要删除这条交易记录吗？", "提示", {
     confirmButtonText: "确定删除",
     cancelButtonText: "取消",
     type: "warning",
     confirmButtonClass: "el-button--danger",
   })
-    .then(() => {
-      financeStore.deleteTransaction(id);
-      ElMessage.success("已删除");
+    .then(async () => {
+      try {
+        await financeStore.deleteTransaction(Number(id));
+        ElMessage.success("已删除");
+      } catch (error: any) {
+        ElMessage.error(error.message || "删除失败");
+      }
     })
     .catch(() => {});
 };
 
 const handleEdit = (tx: any) => {
-  editingTransaction.value = JSON.parse(JSON.stringify(tx)); // Deep copy to avoid direct mutation
+  editingTransaction.value = {
+    ...JSON.parse(JSON.stringify(tx)),
+    date: dayjs(tx.transactionDate || tx.createdAt).format('YYYY-MM-DD')
+  };
   quickAddVisible.value = true;
 };
 
@@ -338,25 +350,25 @@ const resetFilters = () => {
   currentPage.value = 1;
 };
 
-const handleRefresh = () => {
-  isRefreshing.value = true;
-  // 模拟刷新延迟，增强交互感
-  setTimeout(() => {
-    isRefreshing.value = false;
+const handleRefresh = async () => {
+  try {
+    isRefreshing.value = true;
+    await financeStore.loadTransactions();
     ElMessage({
       message: "数据已更新",
       type: "success",
       duration: 1000,
     });
-  }, 600);
+  } catch (error: any) {
+    ElMessage.error(error.message || "刷新失败");
+  } finally {
+    isRefreshing.value = false;
+  }
 };
 
 const showDetail = (tx: any) => {
-  // 可以扩展详情弹窗
 };
 
-// Reset page when filters change
-import { watch } from "vue";
 watch([searchQuery, filterType, dateRange], () => {
   currentPage.value = 1;
 });
@@ -365,12 +377,11 @@ const mobileStartDate = computed({
   get: () => (dateRange.value ? dateRange.value[0] : null),
   set: (val: any) => {
     if (val) {
-      const start = new Date(val);
       const end =
         dateRange.value && dateRange.value[1]
-          ? new Date(dateRange.value[1])
-          : start;
-      dateRange.value = [start, end];
+          ? dateRange.value[1]
+          : val;
+      dateRange.value = [val, end];
     } else {
       dateRange.value = null;
     }
@@ -381,12 +392,11 @@ const mobileEndDate = computed({
   get: () => (dateRange.value ? dateRange.value[1] : null),
   set: (val: any) => {
     if (val) {
-      const end = new Date(val);
       const start =
         dateRange.value && dateRange.value[0]
-          ? new Date(dateRange.value[0])
-          : end;
-      dateRange.value = [start, end];
+          ? dateRange.value[0]
+          : val;
+      dateRange.value = [start, val];
     } else {
       dateRange.value = null;
     }
@@ -488,7 +498,6 @@ const mobileEndDate = computed({
   align-items: center;
 }
 
-/* Mobile Specific Styles */
 @media (max-width: 1024px) {
   .filter-header {
     padding: 16px;

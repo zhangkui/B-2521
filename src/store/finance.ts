@@ -1,152 +1,210 @@
 import { defineStore } from "pinia";
-import { Transaction, Category, Account, Budget } from "../types";
+import { Transaction, Category, Account, Budget, TransactionType } from "../types";
+import { accountsApi } from "../api/accounts";
+import { categoriesApi } from "../api/categories";
 import {
-  storage,
-  KEYS,
-  initialCategories,
-  initialAccounts,
-  initialTransactions,
-} from "../utils/storage";
+  transactionsApi,
+  QueryTransactionParams,
+} from "../api/transactions";
+import dayjs from "dayjs";
 
 export const useFinanceStore = defineStore("finance", {
   state: () => ({
-    transactions: storage
-      .get<Transaction[]>(KEYS.TRANSACTIONS, initialTransactions)
-      .map((tx) => ({
-        ...tx,
-        createdAt: tx.createdAt || new Date(tx.date).getTime(),
-      })),
-    categories: storage.get<Category[]>(KEYS.CATEGORIES, initialCategories),
-    accounts: storage
-      .get<Account[]>(KEYS.ACCOUNTS, initialAccounts)
-      .map((acc) => ({ ...acc, visible: acc.visible ?? true })),
-    budgets: storage.get<Budget[]>(KEYS.BUDGETS, []),
+    transactions: [] as Transaction[],
+    transactionPagination: {
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 0,
+    },
+    transactionSummary: {
+      totalIncome: 0,
+      totalExpense: 0,
+      netBalance: 0,
+    },
+    categories: [] as Category[],
+    accounts: [] as Account[],
+    budgets: [] as Budget[],
+    loading: false,
   }),
+
   getters: {
     totalBalance: (state) =>
       state.accounts
         .filter((a) => a.visible !== false)
-        .reduce((acc, curr) => acc + curr.balance, 0),
+        .reduce((acc, curr) => acc + Number(curr.balance), 0),
+
     totalIncome: (state) =>
       state.transactions
         .filter((t) => t.type === "income")
-        .reduce((acc, curr) => acc + curr.amount, 0),
+        .reduce((acc, curr) => acc + Number(curr.amount), 0),
+
     totalExpense: (state) =>
       state.transactions
         .filter((t) => t.type === "expense")
-        .reduce((acc, curr) => acc + curr.amount, 0),
+        .reduce((acc, curr) => acc + Number(curr.amount), 0),
+
     recentTransactions: (state) =>
       [...state.transactions]
         .sort((a, b) => {
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
+          const dateA = new Date(a.transactionDate || a.createdAt).getTime();
+          const dateB = new Date(b.transactionDate || b.createdAt).getTime();
           if (dateA !== dateB) return dateB - dateA;
-          return b.createdAt - a.createdAt;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         })
         .slice(0, 10),
+
+    visibleAccounts: (state) =>
+      state.accounts.filter((a) => a.visible !== false),
+
+    incomeCategories: (state) =>
+      state.categories.filter((c) => c.type === "income"),
+
+    expenseCategories: (state) =>
+      state.categories.filter((c) => c.type === "expense"),
   },
+
   actions: {
-    addTransaction(transaction: Omit<Transaction, "id" | "createdAt">) {
-      const newTransaction: Transaction = {
-        ...transaction,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: Date.now(),
-      };
-      this.transactions.push(newTransaction);
+    async initialize() {
+      await Promise.all([this.loadAccounts(), this.loadCategories()]);
+    },
 
-      // Update account balance
-      const account = this.accounts.find((a) => a.id === transaction.accountId);
-      if (account) {
-        if (transaction.type === "income")
-          account.balance += transaction.amount;
-        else account.balance -= transaction.amount;
-      }
+    async loadAccounts() {
+      const accounts = await accountsApi.findAll();
+      this.accounts = accounts.map((a) => ({
+        ...a,
+        balance: Number(a.balance),
+        initialBalance: Number(a.initialBalance),
+        visible: (a as any).visible ?? true,
+      }));
+      return this.accounts;
+    },
 
-      this.syncStorage();
+    async loadCategories() {
+      const categories = await categoriesApi.findAll();
+      this.categories = categories;
+      return this.categories;
     },
-    deleteTransaction(id: string) {
-      const index = this.transactions.findIndex((t) => t.id === id);
-      if (index !== -1) {
-        const transaction = this.transactions[index];
-        const account = this.accounts.find(
-          (a) => a.id === transaction.accountId,
-        );
-        if (account) {
-          if (transaction.type === "income")
-            account.balance -= transaction.amount;
-          else account.balance += transaction.amount;
-        }
-        this.transactions.splice(index, 1);
-        this.syncStorage();
+
+    async loadTransactions(params?: QueryTransactionParams) {
+      this.loading = true;
+      try {
+        const result = await transactionsApi.findAll({
+          page: 1,
+          pageSize: 1000,
+          ...params,
+        });
+        this.transactions = result.list.map((t) => ({
+          ...t,
+          amount: Number(t.amount),
+        }));
+        this.transactionPagination = result.pagination;
+        this.transactionSummary = result.summary;
+        return result;
+      } finally {
+        this.loading = false;
       }
     },
-    addAccount(account: Omit<Account, "id">) {
-      const newAccount = {
-        ...account,
-        id: Math.random().toString(36).substr(2, 9),
-        visible: true,
-      };
-      this.accounts.push(newAccount);
-      this.syncStorage();
+
+    async addAccount(account: any) {
+      const created = await accountsApi.create(account);
+      await this.loadAccounts();
+      return created;
     },
-    toggleAccountVisibility(id: string) {
+
+    async updateAccount(updatedAccount: Account) {
+      const { id, name, type, initialBalance, color, icon, description, isDefault } =
+        updatedAccount;
+      const result = await accountsApi.update(id, {
+        name,
+        type,
+        initialBalance: Number(initialBalance),
+        color: color || undefined,
+        icon: icon || undefined,
+        description: description || undefined,
+        isDefault,
+      });
+      await this.loadAccounts();
+      return result;
+    },
+
+    async deleteAccount(id: number) {
+      const result = await accountsApi.remove(id);
+      await this.loadAccounts();
+      return result;
+    },
+
+    toggleAccountVisibility(id: number) {
       const account = this.accounts.find((a) => a.id === id);
       if (account) {
-        account.visible = !account.visible;
-        this.syncStorage();
+        account.visible = account.visible === false ? true : false;
       }
     },
-    deleteAccount(id: string) {
-      const index = this.accounts.findIndex((a) => a.id === id);
-      if (index !== -1) {
-        this.accounts.splice(index, 1);
-        this.syncStorage();
-      }
-    },
-    updateAccount(updatedAccount: Account) {
-      const index = this.accounts.findIndex((a) => a.id === updatedAccount.id);
-      if (index !== -1) {
-        this.accounts[index] = updatedAccount;
-        this.syncStorage();
-      }
-    },
-    updateTransaction(updatedTx: Transaction) {
-      const index = this.transactions.findIndex((t) => t.id === updatedTx.id);
-      if (index !== -1) {
-        const oldTx = this.transactions[index];
 
-        // 1. Revert old transaction effect on account balance
-        const oldAccount = this.accounts.find((a) => a.id === oldTx.accountId);
-        if (oldAccount) {
-          if (oldTx.type === "income") {
-            oldAccount.balance -= oldTx.amount;
-          } else {
-            oldAccount.balance += oldTx.amount;
-          }
-        }
-
-        // 2. Apply new transaction effect on account balance
-        const newAccount = this.accounts.find(
-          (a) => a.id === updatedTx.accountId,
-        );
-        if (newAccount) {
-          if (updatedTx.type === "income") {
-            newAccount.balance += updatedTx.amount;
-          } else {
-            newAccount.balance -= updatedTx.amount;
-          }
-        }
-
-        // 3. Update the transaction record
-        this.transactions[index] = updatedTx;
-        this.syncStorage();
-      }
+    async addCategory(category: any) {
+      const created = await categoriesApi.create(category);
+      await this.loadCategories();
+      return created;
     },
-    syncStorage() {
-      storage.set(KEYS.TRANSACTIONS, this.transactions);
-      storage.set(KEYS.CATEGORIES, this.categories);
-      storage.set(KEYS.ACCOUNTS, this.accounts);
-      storage.set(KEYS.BUDGETS, this.budgets);
+
+    async updateCategory(id: number, data: any) {
+      const result = await categoriesApi.update(id, data);
+      await this.loadCategories();
+      return result;
+    },
+
+    async deleteCategory(id: number) {
+      const result = await categoriesApi.remove(id);
+      await this.loadCategories();
+      return result;
+    },
+
+    async addTransaction(transaction: {
+      amount: number;
+      type: TransactionType;
+      categoryId: number;
+      accountId: number;
+      date: string;
+      note?: string;
+    }) {
+      const result = await transactionsApi.create({
+        amount: Number(transaction.amount),
+        type: transaction.type,
+        categoryId: Number(transaction.categoryId),
+        accountId: Number(transaction.accountId),
+        transactionDate: transaction.date
+          ? dayjs(transaction.date).toISOString()
+          : new Date().toISOString(),
+        note: transaction.note,
+      });
+      await this.loadTransactions();
+      await this.loadAccounts();
+      return result;
+    },
+
+    async updateTransaction(updatedTx: Transaction & { date?: string }) {
+      const id = updatedTx.id;
+      const result = await transactionsApi.update(id, {
+        accountId: Number(updatedTx.accountId),
+        categoryId: Number(updatedTx.categoryId),
+        type: updatedTx.type,
+        amount: Number(updatedTx.amount),
+        transactionDate: updatedTx.date
+          ? dayjs(updatedTx.date).toISOString()
+          : updatedTx.transactionDate,
+        note: updatedTx.note,
+        description: updatedTx.description,
+      });
+      await this.loadTransactions();
+      await this.loadAccounts();
+      return result;
+    },
+
+    async deleteTransaction(id: number) {
+      const result = await transactionsApi.remove(id);
+      await this.loadTransactions();
+      await this.loadAccounts();
+      return result;
     },
   },
 });
