@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  nickname     String?
+  avatar       String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Account {
+  id           Int           @id @default(autoincrement())
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         AccountType   @default(CASH)
+  balance      Decimal       @default(0) @db.Decimal(15, 2)
+  initialBalance Decimal     @default(0) @db.Decimal(15, 2)
+  currency     String        @default("CNY")
+  icon         String?
+  color        String?
+  description  String?
+  isDefault    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+enum AccountType {
+  CASH
+  BANK_CARD
+  CREDIT_CARD
+  ALIPAY
+  WECHAT
+  INVESTMENT
+  OTHER
+}
+
+model Category {
+  id           Int           @id @default(autoincrement())
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  type         CategoryType
+  icon         String?
+  color        String?
+  parentId     Int?
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryHierarchy")
+  sortOrder    Int           @default(0)
+  isSystem     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+model Transaction {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId   Int
+  account     Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId  Int
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  type        CategoryType
+  amount      Decimal      @db.Decimal(15, 2)
+  description String?
+  note        String?
+  transactionDate DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
