@@ -82,7 +82,10 @@ export const useFinanceStore = defineStore("finance", {
 
     async loadCategories() {
       const categories = await categoriesApi.findAll();
-      this.categories = categories;
+      this.categories = categories.map((c) => ({
+        ...c,
+        type: c.type.toLowerCase() as any,
+      }));
       return this.categories;
     },
 
@@ -97,6 +100,7 @@ export const useFinanceStore = defineStore("finance", {
         this.transactions = result.list.map((t) => ({
           ...t,
           amount: Number(t.amount),
+          type: t.type.toLowerCase() as any,
         }));
         this.transactionPagination = result.pagination;
         this.transactionSummary = result.summary;
@@ -142,13 +146,19 @@ export const useFinanceStore = defineStore("finance", {
     },
 
     async addCategory(category: any) {
-      const created = await categoriesApi.create(category);
+      const created = await categoriesApi.create({
+        ...category,
+        type: category.type?.toUpperCase(),
+      });
       await this.loadCategories();
       return created;
     },
 
     async updateCategory(id: number, data: any) {
-      const result = await categoriesApi.update(id, data);
+      const result = await categoriesApi.update(id, {
+        ...data,
+        type: data.type?.toUpperCase(),
+      });
       await this.loadCategories();
       return result;
     },
@@ -169,7 +179,7 @@ export const useFinanceStore = defineStore("finance", {
     }) {
       const result = await transactionsApi.create({
         amount: Number(transaction.amount),
-        type: transaction.type,
+        type: transaction.type.toUpperCase() as any,
         categoryId: Number(transaction.categoryId),
         accountId: Number(transaction.accountId),
         transactionDate: transaction.date
@@ -187,7 +197,7 @@ export const useFinanceStore = defineStore("finance", {
       const result = await transactionsApi.update(id, {
         accountId: Number(updatedTx.accountId),
         categoryId: Number(updatedTx.categoryId),
-        type: updatedTx.type,
+        type: updatedTx.type.toUpperCase() as any,
         amount: Number(updatedTx.amount),
         transactionDate: updatedTx.date
           ? dayjs(updatedTx.date).toISOString()

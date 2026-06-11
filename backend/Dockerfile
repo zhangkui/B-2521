@@ -3,8 +3,8 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 先复制 package.json，利用 Docker 缓存
-COPY package*.json ./
+# 先复制 package.json 和 package-lock.json，利用 Docker 缓存
+COPY package.json package-lock.json ./
 
 # 安装依赖
 RUN npm ci --registry=https://registry.npmmirror.com
@@ -29,11 +29,11 @@ ENV NODE_ENV=production
 RUN addgroup -g 1001 -S nodejs \
     && adduser -S nestjs -u 1001
 
-# 复制 package.json 用于安装生产依赖
-COPY package*.json ./
+# 复制 package.json 和生成的 lock 文件
+COPY package.json package-lock.json ./
 
 # 仅安装生产依赖
-RUN npm ci --omit=dev --registry=https://registry.npmmirror.com
+RUN npm install --omit=dev --registry=https://registry.npmmirror.com
 
 # 复制构建产物
 COPY --from=builder /app/dist ./dist
@@ -53,6 +53,6 @@ USER nestjs
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/docs || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

@@ -40,6 +40,10 @@
             <el-icon><lucide-icon name="CreditCard" /></el-icon>
             <span>资产管理</span>
           </el-menu-item>
+          <el-menu-item index="/categories">
+            <el-icon><lucide-icon name="Tags" /></el-icon>
+            <span>分类管理</span>
+          </el-menu-item>
         </el-menu>
 
         <div class="sidebar-footer">
@@ -136,6 +140,10 @@
         <el-menu-item index="/accounts">
           <el-icon><lucide-icon name="CreditCard" /></el-icon>
           <span>资产管理</span>
+        </el-menu-item>
+        <el-menu-item index="/categories">
+          <el-icon><lucide-icon name="Tags" /></el-icon>
+          <span>分类管理</span>
         </el-menu-item>
       </el-menu>
       <div class="sidebar-footer mobile-footer">
@@ -252,6 +260,7 @@ const pageTitle = computed(() => {
     "/analysis": "收支分析",
     "/budget": "预算管理",
     "/accounts": "账户管理",
+    "/categories": "分类管理",
   };
   return titles[route.path] || "智慧记账";
 });
