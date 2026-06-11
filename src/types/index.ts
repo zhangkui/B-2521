@@ -96,7 +96,68 @@ export interface Pagination<T> {
 }
 
 export interface Budget {
-  categoryId: string;
+  id: number;
+  userId: number;
+  categoryId: number;
+  category?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    type: TransactionType;
+  };
+  amount: number;
+  month: string;
+  spent?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetSummary {
+  totalBudget: number;
+  totalSpent: number;
+  totalRemaining: number;
+  percentage: number;
+  items: BudgetItem[];
+}
+
+export interface BudgetItem {
+  id: number;
+  categoryId: number;
+  category: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    type: TransactionType;
+  };
   amount: number;
   spent: number;
+  month: string;
+}
+
+export interface DashboardOverview {
+  totalBalance: number;
+  currentMonth: {
+    income: number;
+    expense: number;
+  };
+  prevMonth: {
+    income: number;
+    expense: number;
+  };
+  incomeChange: number;
+  expenseChange: number;
+  budget: {
+    totalBudget: number;
+    totalSpent: number;
+    totalRemaining: number;
+    percentage: number;
+  };
+}
+
+export interface DashboardChartData {
+  labels: string[];
+  income: number[];
+  expense: number[];
 }

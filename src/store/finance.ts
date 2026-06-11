@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
-import { Transaction, Category, Account, Budget, TransactionType } from "../types";
+import { Transaction, Category, Account, Budget, BudgetSummary, TransactionType } from "../types";
 import { accountsApi } from "../api/accounts";
 import { categoriesApi } from "../api/categories";
+import { budgetsApi } from "../api/budgets";
 import {
   transactionsApi,
   QueryTransactionParams,
@@ -25,6 +26,7 @@ export const useFinanceStore = defineStore("finance", {
     categories: [] as Category[],
     accounts: [] as Account[],
     budgets: [] as Budget[],
+    budgetSummary: null as BudgetSummary | null,
     loading: false,
   }),
 
@@ -202,8 +204,8 @@ export const useFinanceStore = defineStore("finance", {
         transactionDate: updatedTx.date
           ? dayjs(updatedTx.date).toISOString()
           : updatedTx.transactionDate,
-        note: updatedTx.note,
-        description: updatedTx.description,
+        note: updatedTx.note ?? undefined,
+        description: updatedTx.description ?? undefined,
       });
       await this.loadTransactions();
       await this.loadAccounts();
@@ -214,6 +216,45 @@ export const useFinanceStore = defineStore("finance", {
       const result = await transactionsApi.remove(id);
       await this.loadTransactions();
       await this.loadAccounts();
+      return result;
+    },
+
+    async loadBudgets(month?: string) {
+      const currentMonth = month || dayjs().format("YYYY-MM");
+      const budgets = await budgetsApi.findAll({ month: currentMonth });
+      this.budgets = budgets.map((b) => ({
+        ...b,
+        amount: Number(b.amount),
+      }));
+      return this.budgets;
+    },
+
+    async loadBudgetSummary(month?: string) {
+      const currentMonth = month || dayjs().format("YYYY-MM");
+      const summary = await budgetsApi.getSummary(currentMonth);
+      this.budgetSummary = summary;
+      return summary;
+    },
+
+    async setBudget(params: { categoryId: number; amount: number; month: string }) {
+      const result = await budgetsApi.create(params);
+      await this.loadBudgets(params.month);
+      await this.loadBudgetSummary(params.month);
+      return result;
+    },
+
+    async updateBudget(id: number, params: { amount?: number; month?: string }) {
+      const result = await budgetsApi.update(id, params);
+      const month = params.month || dayjs().format("YYYY-MM");
+      await this.loadBudgets(month);
+      await this.loadBudgetSummary(month);
+      return result;
+    },
+
+    async deleteBudget(id: number) {
+      const result = await budgetsApi.remove(id);
+      await this.loadBudgets();
+      await this.loadBudgetSummary();
       return result;
     },
   },

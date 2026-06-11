@@ -9,11 +9,11 @@
         <div class="card-content">
           <span class="label">当前总余额</span>
           <h3 class="value">
-            ¥ {{ Number(financeStore.totalBalance).toLocaleString() }}
+            ¥ {{ Number(overview?.totalBalance || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </h3>
-          <span class="trend up">
-            <lucide-icon name="ArrowUpRight" :size="14" />
-            +2.4% 从上月
+          <span class="trend" :class="balanceTrend.isUp ? 'up' : 'down'">
+            <lucide-icon :name="balanceTrend.isUp ? 'ArrowUpRight' : 'ArrowDownRight'" :size="14" />
+            {{ balanceTrend.text }} 从上月
           </span>
         </div>
       </div>
@@ -25,11 +25,11 @@
         <div class="card-content">
           <span class="label">本月总收入</span>
           <h3 class="value">
-            ¥ {{ Number(financeStore.totalIncome).toLocaleString() }}
+            ¥ {{ Number(overview?.currentMonth?.income || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </h3>
-          <span class="trend up">
-            <lucide-icon name="ArrowUpRight" :size="14" />
-            +12% 从上月
+          <span class="trend" :class="incomeTrend.isUp ? 'up' : 'down'">
+            <lucide-icon :name="incomeTrend.isUp ? 'ArrowUpRight' : 'ArrowDownRight'" :size="14" />
+            {{ incomeTrend.text }} 从上月
           </span>
         </div>
       </div>
@@ -41,11 +41,11 @@
         <div class="card-content">
           <span class="label">本月总支出</span>
           <h3 class="value">
-            ¥ {{ Number(financeStore.totalExpense).toLocaleString() }}
+            ¥ {{ Number(overview?.currentMonth?.expense || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </h3>
-          <span class="trend down">
-            <lucide-icon name="ArrowDownRight" :size="14" />
-            -4.2% 从上月
+          <span class="trend" :class="expenseTrend.isUp ? 'down' : 'up'">
+            <lucide-icon :name="expenseTrend.isUp ? 'ArrowUpRight' : 'ArrowDownRight'" :size="14" />
+            {{ expenseTrend.text }} 从上月
           </span>
         </div>
       </div>
@@ -56,14 +56,15 @@
         </div>
         <div class="card-content">
           <span class="label">预算余额</span>
-          <h3 class="value">¥ 4,200.00</h3>
+          <h3 class="value">¥ {{ Number(overview?.budget?.totalRemaining || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</h3>
           <div class="budget-progress">
             <el-progress
-              :percentage="65"
+              :percentage="overview?.budget?.percentage || 0"
               :show-text="false"
               :stroke-width="4"
+              :color="budgetProgressColor"
             />
-            <span class="progress-label">已使用 65%</span>
+            <span class="progress-label">已使用 {{ overview?.budget?.percentage || 0 }}%</span>
           </div>
         </div>
       </div>
@@ -79,7 +80,11 @@
             <el-radio-button value="month">月</el-radio-button>
           </el-radio-group>
         </div>
-        <div ref="lineChartRef" class="chart-container"></div>
+        <div v-if="chartLoading" class="chart-loading">
+          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+          <span>加载中...</span>
+        </div>
+        <div v-else ref="lineChartRef" class="chart-container"></div>
       </div>
 
       <div class="recent-transactions glass-card">
@@ -129,54 +134,80 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import { useFinanceStore } from "../store/finance";
+import { dashboardApi } from "../api/dashboard";
+import { DashboardOverview, DashboardChartData } from "../types";
 import LucideIcon from "../components/LucideIcon.vue";
+import { Loading } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 import dayjs from "dayjs";
 
 const financeStore = useFinanceStore();
-const chartPeriod = ref("week");
+const chartPeriod = ref<"week" | "month">("week");
 const lineChartRef = ref<HTMLElement | null>(null);
+const chartLoading = ref(false);
 let lineChart: echarts.ECharts | null = null;
+
+const overview = ref<DashboardOverview | null>(null);
+const chartData = ref<DashboardChartData | null>(null);
+
+const budgetProgressColor = computed(() => {
+  const pct = overview.value?.budget?.percentage || 0;
+  if (pct >= 90) return "#ef4444";
+  if (pct >= 70) return "#f59e0b";
+  return "#6366f1";
+});
+
+const formatTrend = (change: number) => {
+  if (change === 0) return { isUp: true, text: "0%" };
+  const isUp = change > 0;
+  return { isUp, text: `${isUp ? "+" : ""}${change}%` };
+};
+
+const balanceTrend = computed(() => {
+  if (!overview.value) return { isUp: true, text: "+0%" };
+  const curr = overview.value.currentMonth.income - overview.value.currentMonth.expense;
+  const prev = overview.value.prevMonth.income - overview.value.prevMonth.expense;
+  if (prev === 0) return { isUp: curr >= 0, text: curr >= 0 ? "+0%" : "0%" };
+  const change = Math.round(((curr - prev) / Math.abs(prev)) * 10000) / 100;
+  return formatTrend(change);
+});
+
+const incomeTrend = computed(() => formatTrend(overview.value?.incomeChange || 0));
+
+const expenseTrend = computed(() => formatTrend(overview.value?.expenseChange || 0));
 
 const getCategory = (id: number) =>
   financeStore.categories.find((c) => c.id === Number(id));
 
-const chartData = {
-  week: {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    income: [1200, 1500, 900, 1800, 2000, 1600, 2200],
-    expense: [800, 1200, 600, 1500, 1200, 2100, 1300],
-  },
-  month: {
-    labels: Array.from({ length: 30 }, (_, i) => `${i + 1}日`),
-    income: Array.from({ length: 30 }, () =>
-      Math.floor(Math.random() * 2000 + 1000),
-    ),
-    expense: Array.from({ length: 30 }, () =>
-      Math.floor(Math.random() * 1500 + 500),
-    ),
-  },
+const loadChartData = async (period: "week" | "month") => {
+  chartLoading.value = true;
+  try {
+    chartData.value = await dashboardApi.getChartData(period);
+  } catch (e) {
+    console.error("Failed to load chart data", e);
+  } finally {
+    chartLoading.value = false;
+  }
 };
 
 const updateChart = () => {
-  if (!lineChart) return;
-  const current = chartData[chartPeriod.value as keyof typeof chartData];
+  if (!lineChart || !chartData.value) return;
 
   lineChart.setOption({
     xAxis: {
-      data: current.labels,
+      data: chartData.value.labels,
     },
     series: [
-      { name: "收入", data: current.income },
-      { name: "支出", data: current.expense },
+      { name: "收入", data: chartData.value.income },
+      { name: "支出", data: chartData.value.expense },
     ],
   });
 };
 
 const initChart = () => {
-  if (!lineChartRef.value) return;
+  if (!lineChartRef.value || !chartData.value) return;
   lineChart = echarts.init(lineChartRef.value);
 
   const option = {
@@ -191,7 +222,7 @@ const initChart = () => {
     xAxis: {
       type: "category",
       boundaryGap: false,
-      data: chartData.week.labels,
+      data: chartData.value.labels,
       axisLine: { lineStyle: { color: "#e2e8f0" } },
     },
     yAxis: {
@@ -204,7 +235,7 @@ const initChart = () => {
         name: "收入",
         type: "line",
         smooth: true,
-        data: chartData.week.income,
+        data: chartData.value.income,
         itemStyle: { color: "#10b981" },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -217,7 +248,7 @@ const initChart = () => {
         name: "支出",
         type: "line",
         smooth: true,
-        data: chartData.week.expense,
+        data: chartData.value.expense,
         itemStyle: { color: "#ef4444" },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -230,28 +261,33 @@ const initChart = () => {
   };
 
   lineChart.setOption(option);
-  if (chartPeriod.value === "month") updateChart();
 };
 
-watch(chartPeriod, () => {
+watch(chartPeriod, async (newPeriod) => {
+  await loadChartData(newPeriod);
   updateChart();
 });
 
 onMounted(async () => {
-  initChart();
-  setTimeout(() => {
-    lineChart?.resize();
-  }, 100);
-  window.addEventListener("resize", () => lineChart?.resize());
+  try {
+    const [overviewResult] = await Promise.all([
+      dashboardApi.getOverview(),
+      financeStore.initialize(),
+      financeStore.loadTransactions(),
+    ]);
+    overview.value = overviewResult;
 
-  if (financeStore.transactions.length === 0 || financeStore.accounts.length === 0) {
-    try {
-      await financeStore.initialize();
-      await financeStore.loadTransactions();
-    } catch (e) {
-      console.error("Failed to load finance data", e);
-    }
+    await loadChartData(chartPeriod.value);
+
+    initChart();
+    setTimeout(() => {
+      lineChart?.resize();
+    }, 100);
+  } catch (e) {
+    console.error("Failed to load dashboard data", e);
   }
+
+  window.addEventListener("resize", () => lineChart?.resize());
 });
 
 onUnmounted(() => {
@@ -352,6 +388,17 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
+}
+
+.chart-loading {
+  height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 1024px) {

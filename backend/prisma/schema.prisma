@@ -19,6 +19,7 @@ model User {
   accounts     Account[]
   categories   Category[]
   transactions Transaction[]
+  budgets      Budget[]
 }
 
 model Account {
@@ -65,6 +66,7 @@ model Category {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
+  budgets      Budget[]
 }
 
 enum CategoryType {
@@ -87,4 +89,18 @@ model Transaction {
   transactionDate DateTime
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+}
+
+model Budget {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Decimal  @db.Decimal(15, 2)
+  month      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, categoryId, month])
 }
