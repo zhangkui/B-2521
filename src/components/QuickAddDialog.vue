@@ -75,6 +75,34 @@
             placeholder="写点什么..."
           />
         </el-form-item>
+
+        <el-form-item label="标签">
+          <el-select
+            v-model="form.tagIds"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或创建标签"
+            class="w-full"
+            @create="handleCreateTag"
+          >
+            <el-option
+              v-for="tag in financeStore.tags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.id"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="tag-dot"
+                  :style="{ backgroundColor: tag.color || '#6366f1' }"
+                ></span>
+                <span>{{ tag.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
       </el-form>
     </div>
 
@@ -147,6 +175,7 @@ const form = reactive({
   accountId: 0 as number,
   date: dayjs().format("YYYY-MM-DD"),
   note: "",
+  tagIds: [] as number[],
 });
 
 const filteredCategories = computed(() =>
@@ -183,11 +212,13 @@ watch(
       form.accountId = Number(props.editData.accountId);
       form.date = props.editData.date || dayjs(props.editData.transactionDate || props.editData.createdAt).format("YYYY-MM-DD");
       form.note = props.editData.note || props.editData.description || "";
+      form.tagIds = props.editData.tags?.map((t: any) => t.id) || [];
     } else if (val) {
       form.amount = 0;
       form.type = "expense";
       form.date = dayjs().format("YYYY-MM-DD");
       form.note = "";
+      form.tagIds = [];
       form.categoryId =
         financeStore.categories.find((c) => c.type === "expense")?.id ?? 0;
       form.accountId = financeStore.accounts[0]?.id ?? 0;
@@ -199,6 +230,15 @@ const isFormValid = computed(
   () => form.amount > 0 && form.categoryId && form.accountId,
 );
 
+const handleCreateTag = async (tagName: string) => {
+  try {
+    const newTag = await financeStore.addTag({ name: tagName });
+    form.tagIds.push(newTag.id);
+  } catch (error: any) {
+    ElMessage.error(error.message || "创建标签失败");
+  }
+};
+
 const handleSubmit = async () => {
   try {
     submitting.value = true;
@@ -207,6 +247,7 @@ const handleSubmit = async () => {
         ...props.editData,
         ...form,
         date: form.date,
+        tagIds: form.tagIds,
       });
       ElMessage.success("已更新");
     } else {
@@ -217,6 +258,7 @@ const handleSubmit = async () => {
         accountId: Number(form.accountId),
         date: form.date,
         note: form.note,
+        tagIds: form.tagIds,
       });
       ElMessage.success("已保存");
     }
@@ -231,6 +273,7 @@ const handleSubmit = async () => {
 const handleClosed = () => {
   form.amount = 0;
   form.note = "";
+  form.tagIds = [];
 };
 </script>
 
@@ -289,6 +332,13 @@ const handleClosed = () => {
 
 .gap-2 {
   gap: 8px;
+}
+
+.tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 @media (max-width: 1024px) {

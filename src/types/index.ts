@@ -65,6 +65,7 @@ export interface Transaction {
   transactionDate: string;
   createdAt: string;
   updatedAt: string;
+  tags?: Tag[];
   account?: {
     id: number;
     name: string;
@@ -77,6 +78,146 @@ export interface Transaction {
     icon: string | null;
     color: string | null;
     type: TransactionType;
+  };
+}
+
+export interface Tag {
+  id: number;
+  userId: number;
+  name: string;
+  color: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RecurringFrequency =
+  | "DAILY"
+  | "WEEKLY"
+  | "BIWEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "YEARLY";
+
+export interface RecurringTransaction {
+  id: number;
+  userId: number;
+  accountId: number;
+  categoryId: number;
+  type: TransactionType;
+  amount: number;
+  description: string | null;
+  note: string | null;
+  frequency: RecurringFrequency;
+  startDate: string;
+  endDate: string | null;
+  lastGeneratedDate: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tags?: Tag[];
+  account?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  };
+  category?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    type: TransactionType;
+  };
+}
+
+export interface MonthlyReport {
+  month: string;
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    netSavings: number;
+    savingsRate: number;
+    incomeCount: number;
+    expenseCount: number;
+  };
+  comparison: {
+    prevIncome: number;
+    prevExpense: number;
+    incomeChange: number;
+    expenseChange: number;
+  };
+  expenseByCategory: Array<{
+    category: Category;
+    totalAmount: number;
+    count: number;
+    percentage: number;
+  }>;
+  incomeByCategory: Array<{
+    category: Category;
+    totalAmount: number;
+    count: number;
+    percentage: number;
+  }>;
+  expenseByAccount: Array<{
+    account: Account;
+    totalAmount: number;
+    count: number;
+  }>;
+  incomeByAccount: Array<{
+    account: Account;
+    totalAmount: number;
+    count: number;
+  }>;
+  budget: {
+    totalBudget: number;
+    totalSpent: number;
+    totalRemaining: number;
+    percentage: number;
+    items: Array<{
+      id: number;
+      category: Category;
+      amount: number;
+      spent: number;
+      remaining: number;
+      percentage: number;
+    }>;
+  };
+  highlights: {
+    topExpenseCategory: {
+      category: Category;
+      totalAmount: number;
+      count: number;
+      percentage: number;
+    } | null;
+    topIncomeCategory: {
+      category: Category;
+      totalAmount: number;
+      count: number;
+      percentage: number;
+    } | null;
+  };
+  tagStats: {
+    expenseByTag: Array<{
+      tag: { id: number; name: string; color: string | null };
+      totalAmount: number;
+      count: number;
+      percentage: number;
+    }>;
+    incomeByTag: Array<{
+      tag: { id: number; name: string; color: string | null };
+      totalAmount: number;
+      count: number;
+      percentage: number;
+    }>;
+    untaggedExpense: number;
+    untaggedIncome: number;
+  };
+  narrative: string;
+  dailyStats: {
+    labels: string[];
+    income: number[];
+    expense: number[];
   };
 }
 

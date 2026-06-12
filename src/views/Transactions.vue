@@ -23,6 +23,74 @@
           <el-option label="收入" value="income" />
           <el-option label="支出" value="expense" />
         </el-select>
+
+        <el-select
+          v-model="filterAccountId"
+          placeholder="账户"
+          clearable
+          class="filter-select"
+        >
+          <el-option
+            v-for="acc in financeStore.accounts"
+            :key="acc.id"
+            :label="acc.name"
+            :value="acc.id"
+          />
+        </el-select>
+
+        <el-select
+          v-model="filterCategoryId"
+          placeholder="分类"
+          clearable
+          class="filter-select"
+        >
+          <el-option
+            v-for="cat in filteredCategories"
+            :key="cat.id"
+            :label="cat.name"
+            :value="cat.id"
+          >
+            <div class="flex items-center gap-2">
+              <lucide-icon :name="cat.icon || 'HelpCircle'" :size="14" :color="cat.color || undefined" />
+              <span>{{ cat.name }}</span>
+            </div>
+          </el-option>
+        </el-select>
+
+        <el-select
+          v-model="filterTagIds"
+          multiple
+          placeholder="标签"
+          clearable
+          class="filter-select filter-tag-select"
+        >
+          <el-option
+            v-for="tag in financeStore.tags"
+            :key="tag.id"
+            :label="tag.name"
+            :value="tag.id"
+          >
+            <div class="flex items-center gap-2">
+              <span
+                class="tag-dot"
+                :style="{ backgroundColor: tag.color || '#6366f1' }"
+              ></span>
+              <span>{{ tag.name }}</span>
+            </div>
+          </el-option>
+        </el-select>
+
+        <el-select
+          v-if="filterTagIds.length > 1"
+          v-model="filterTagMode"
+          placeholder="匹配"
+          class="filter-select tag-mode-select"
+          size="small"
+        >
+          <el-option label="任一" value="OR" />
+          <el-option label="全部" value="AND" />
+        </el-select>
+
         <template v-if="!isMobile">
           <el-date-picker
             v-model="dateRange"
@@ -72,6 +140,7 @@
       <!-- Desktop Tablet View -->
       <el-table
         v-if="!isMobile"
+        v-loading="serverSideLoading"
         :data="paginatedTransactions"
         style="width: 100%"
         height="530"
@@ -113,9 +182,26 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="备注" show-overflow-tooltip>
+        <el-table-column label="备注与标签" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-hint">{{ row.note || row.description || "-" }}</span>
+            <div class="note-tags-cell">
+              <span class="text-hint">{{ row.note || row.description || "-" }}</span>
+              <div v-if="row.tags && row.tags.length > 0" class="tag-list">
+                <el-tag
+                  v-for="tag in row.tags"
+                  :key="tag.id"
+                  size="small"
+                  :style="{
+                    backgroundColor: (tag.color || '#6366f1') + '15',
+                    borderColor: (tag.color || '#6366f1') + '30',
+                    color: tag.color || '#6366f1',
+                  }"
+                  effect="plain"
+                >
+                  {{ tag.name }}
+                </el-tag>
+              </div>
+            </div>
           </template>
         </el-table-column>
 
@@ -173,7 +259,7 @@
       </el-table>
 
       <!-- Mobile List View -->
-      <div v-else class="mobile-list">
+      <div v-else class="mobile-list" v-loading="serverSideLoading">
         <div
           v-for="tx in paginatedTransactions"
           :key="tx.id"
@@ -207,6 +293,24 @@
                 <span class="mobile-note">{{ tx.note || tx.description || "-" }}</span>
                 <span class="mobile-time">{{ dayjs(tx.transactionDate || tx.createdAt).format('YYYY-MM-DD') }}</span>
               </div>
+              <div v-if="tx.tags && tx.tags.length > 0" class="mobile-tag-list">
+                <el-tag
+                  v-for="tag in tx.tags.slice(0, 3)"
+                  :key="tag.id"
+                  size="small"
+                  :style="{
+                    backgroundColor: (tag.color || '#6366f1') + '15',
+                    borderColor: (tag.color || '#6366f1') + '30',
+                    color: tag.color || '#6366f1',
+                  }"
+                  effect="plain"
+                >
+                  {{ tag.name }}
+                </el-tag>
+                <span v-if="tx.tags.length > 3" class="more-tags">
+                  +{{ tx.tags.length - 3 }}
+                </span>
+              </div>
             </div>
           </div>
           <div class="mobile-card-actions">
@@ -231,12 +335,25 @@
       </div>
 
       <div class="pagination-container">
+        <div class="pagination-summary">
+          <span class="summary-text">
+            共 <strong>{{ financeStore.transactionPagination.total }}</strong> 条记录
+            <span v-if="financeStore.transactionSummary.totalIncome > 0 || financeStore.transactionSummary.totalExpense > 0" class="summary-stats">
+              收入: <span class="income">¥{{ financeStore.transactionSummary.totalIncome.toFixed(2) }}</span>
+              支出: <span class="expense">¥{{ financeStore.transactionSummary.totalExpense.toFixed(2) }}</span>
+              结余: <span :class="financeStore.transactionSummary.netBalance >= 0 ? 'income' : 'expense'">
+                ¥{{ financeStore.transactionSummary.netBalance.toFixed(2) }}
+              </span>
+            </span>
+          </span>
+        </div>
         <el-pagination
           v-model:current-page="currentPage"
           layout="total, prev, pager, next"
-          :total="filteredTransactions.length"
+          :total="financeStore.transactionPagination.total"
           :page-size="pageSize"
           :size="isMobile ? 'small' : 'default'"
+          :page-count="financeStore.transactionPagination.totalPages"
         />
       </div>
     </div>
@@ -271,51 +388,72 @@ const financeStore = useFinanceStore();
 
 const searchQuery = ref("");
 const filterType = ref("");
+const filterAccountId = ref<number | null>(null);
+const filterCategoryId = ref<number | null>(null);
+const filterTagIds = ref<number[]>([]);
+const filterTagMode = ref<'AND' | 'OR'>('OR');
 const dateRange = ref<[string, string] | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const isRefreshing = ref(false);
 const quickAddVisible = ref(false);
 const editingTransaction = ref<any>(null);
+const serverSideLoading = ref(false);
 
 const getCategory = (id: number) =>
   financeStore.categories.find((c) => c.id === Number(id));
 const getAccount = (id: number) =>
   financeStore.accounts.find((a) => a.id === Number(id));
 
-const filteredTransactions = computed(() => {
-  return financeStore.transactions
-    .filter((tx) => {
-      const txNote = (tx.note || tx.description || "").toLowerCase();
-      const catName = getCategory(Number(tx.categoryId))?.name || "";
-      const matchesSearch =
-        txNote.includes(searchQuery.value.toLowerCase()) ||
-        catName.includes(searchQuery.value);
-      const matchesType = !filterType.value || tx.type === filterType.value;
-
-      let matchesDate = true;
-      if (dateRange.value && dateRange.value.length === 2) {
-        const start = dayjs(dateRange.value[0]).startOf('day').valueOf();
-        const end = dayjs(dateRange.value[1]).endOf('day').valueOf();
-        const txDate = dayjs(tx.transactionDate || tx.createdAt).valueOf();
-        matchesDate = txDate >= start && txDate <= end;
-      }
-
-      return matchesSearch && matchesType && matchesDate;
-    })
-    .sort((a, b) => {
-      const dateA = dayjs(a.transactionDate || a.createdAt).valueOf();
-      const dateB = dayjs(b.transactionDate || b.createdAt).valueOf();
-      if (dateA !== dateB) return dateB - dateA;
-      return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
-    });
+const filteredCategories = computed(() => {
+  if (filterType.value) {
+    return financeStore.categories.filter((c) => c.type === filterType.value);
+  }
+  return financeStore.categories;
 });
+
+const filteredTransactions = computed(() => financeStore.transactions);
 
 const paginatedTransactions = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return filteredTransactions.value.slice(start, end);
+  return filteredTransactions.value;
 });
+
+const loadFilteredTransactions = async () => {
+  serverSideLoading.value = true;
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+    };
+
+    if (filterType.value) {
+      params.type = filterType.value.toUpperCase();
+    }
+    if (filterAccountId.value !== null) {
+      params.accountId = filterAccountId.value;
+    }
+    if (filterCategoryId.value !== null) {
+      params.categoryId = filterCategoryId.value;
+    }
+    if (searchQuery.value.trim()) {
+      params.keyword = searchQuery.value.trim();
+    }
+    if (filterTagIds.value.length > 0) {
+      params.tagIds = filterTagIds.value;
+      params.tagMode = filterTagMode.value;
+    }
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.startDate = dateRange.value[0];
+      params.endDate = dateRange.value[1];
+    }
+
+    await financeStore.loadTransactions(params);
+  } catch (error: any) {
+    console.error('加载交易记录失败:', error);
+  } finally {
+    serverSideLoading.value = false;
+  }
+};
 
 const handleDelete = (id: number) => {
   ElMessageBox.confirm("确定要删除这条交易记录吗？", "提示", {
@@ -346,14 +484,19 @@ const handleEdit = (tx: any) => {
 const resetFilters = () => {
   searchQuery.value = "";
   filterType.value = "";
+  filterAccountId.value = null;
+  filterCategoryId.value = null;
+  filterTagIds.value = [];
+  filterTagMode.value = "OR";
   dateRange.value = null;
   currentPage.value = 1;
+  loadFilteredTransactions();
 };
 
 const handleRefresh = async () => {
   try {
     isRefreshing.value = true;
-    await financeStore.loadTransactions();
+    await loadFilteredTransactions();
     ElMessage({
       message: "数据已更新",
       type: "success",
@@ -369,8 +512,22 @@ const handleRefresh = async () => {
 const showDetail = (tx: any) => {
 };
 
-watch([searchQuery, filterType, dateRange], () => {
-  currentPage.value = 1;
+watch(
+  [searchQuery, filterType, filterAccountId, filterCategoryId, filterTagIds, filterTagMode, dateRange],
+  () => {
+    currentPage.value = 1;
+    loadFilteredTransactions();
+  }
+);
+
+watch(currentPage, () => {
+  loadFilteredTransactions();
+});
+
+onMounted(() => {
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+  loadFilteredTransactions();
 });
 
 const mobileStartDate = computed({

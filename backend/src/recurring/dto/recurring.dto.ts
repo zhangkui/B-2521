@@ -1,8 +1,8 @@
-import { IsString, IsOptional, IsEnum, IsInt, IsNumber, IsDateString, Min, IsNotEmpty, IsArray } from 'class-validator';
-import { CategoryType } from '@prisma/client';
+import { IsString, IsOptional, IsInt, Min, IsNotEmpty, IsEnum, IsBoolean, IsDateString, IsArray, IsNumber } from 'class-validator';
+import { CategoryType, RecurringFrequency } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateTransactionDto {
+export class CreateRecurringDto {
   @ApiProperty({ description: '账户ID', example: 1 })
   @IsInt()
   @IsNotEmpty()
@@ -22,19 +22,33 @@ export class CreateTransactionDto {
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ description: '交易日期', example: '2024-01-15T12:00:00.000Z' })
-  @IsDateString()
-  transactionDate: string;
+  @ApiProperty({ description: '周期频率', enum: RecurringFrequency, example: RecurringFrequency.MONTHLY })
+  @IsEnum(RecurringFrequency)
+  frequency: RecurringFrequency;
 
-  @ApiPropertyOptional({ description: '交易描述', example: '午餐' })
+  @ApiProperty({ description: '开始日期', example: '2024-01-01T00:00:00.000Z' })
+  @IsDateString()
+  startDate: string;
+
+  @ApiPropertyOptional({ description: '结束日期', example: '2024-12-31T23:59:59.000Z' })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ description: '交易描述', example: '房租' })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: '备注', example: '和同事一起吃' })
+  @ApiPropertyOptional({ description: '备注', example: '每月1号自动扣除' })
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ description: '是否启用', example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiPropertyOptional({ description: '标签ID列表', type: [Number] })
   @IsOptional()
@@ -43,7 +57,7 @@ export class CreateTransactionDto {
   tagIds?: number[];
 }
 
-export class UpdateTransactionDto {
+export class UpdateRecurringDto {
   @ApiPropertyOptional({ description: '账户ID' })
   @IsOptional()
   @IsInt()
@@ -65,10 +79,20 @@ export class UpdateTransactionDto {
   @Min(0.01)
   amount?: number;
 
-  @ApiPropertyOptional({ description: '交易日期' })
+  @ApiPropertyOptional({ description: '周期频率', enum: RecurringFrequency })
+  @IsOptional()
+  @IsEnum(RecurringFrequency)
+  frequency?: RecurringFrequency;
+
+  @ApiPropertyOptional({ description: '开始日期' })
   @IsOptional()
   @IsDateString()
-  transactionDate?: string;
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: '结束日期' })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 
   @ApiPropertyOptional({ description: '交易描述' })
   @IsOptional()
@@ -80,6 +104,11 @@ export class UpdateTransactionDto {
   @IsString()
   note?: string;
 
+  @ApiPropertyOptional({ description: '是否启用' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
   @ApiPropertyOptional({ description: '标签ID列表', type: [Number] })
   @IsOptional()
   @IsArray()
@@ -87,7 +116,7 @@ export class UpdateTransactionDto {
   tagIds?: number[];
 }
 
-export class QueryTransactionDto {
+export class QueryRecurringDto {
   @ApiPropertyOptional({ description: '按类型筛选', enum: CategoryType })
   @IsOptional()
   @IsEnum(CategoryType)
@@ -103,30 +132,21 @@ export class QueryTransactionDto {
   @IsInt()
   categoryId?: number;
 
-  @ApiPropertyOptional({ description: '开始日期', example: '2024-01-01T00:00:00.000Z' })
+  @ApiPropertyOptional({ description: '按频率筛选', enum: RecurringFrequency })
   @IsOptional()
-  @IsDateString()
-  startDate?: string;
+  @IsEnum(RecurringFrequency)
+  frequency?: RecurringFrequency;
 
-  @ApiPropertyOptional({ description: '结束日期', example: '2024-12-31T23:59:59.000Z' })
+  @ApiPropertyOptional({ description: '是否只显示启用的' })
   @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @ApiPropertyOptional({ description: '搜索关键词' })
-  @IsOptional()
-  @IsString()
-  keyword?: string;
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiPropertyOptional({ description: '按标签ID筛选', type: [Number] })
   @IsOptional()
+  @IsArray()
   @IsInt({ each: true })
   tagIds?: number[];
-
-  @ApiPropertyOptional({ description: '标签筛选模式', enum: ['AND', 'OR'], default: 'OR' })
-  @IsOptional()
-  @IsString()
-  tagMode?: 'AND' | 'OR';
 
   @ApiPropertyOptional({ description: '页码', example: 1 })
   @IsOptional()
@@ -139,4 +159,11 @@ export class QueryTransactionDto {
   @IsInt()
   @Min(1)
   pageSize?: number;
+}
+
+export class GenerateRecurringDto {
+  @ApiPropertyOptional({ description: '截止日期', example: '2024-12-31T23:59:59.000Z' })
+  @IsOptional()
+  @IsDateString()
+  untilDate?: string;
 }

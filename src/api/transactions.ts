@@ -9,6 +9,7 @@ export interface CreateTransactionParams {
   transactionDate: string;
   description?: string;
   note?: string;
+  tagIds?: number[];
 }
 
 export interface UpdateTransactionParams {
@@ -19,6 +20,7 @@ export interface UpdateTransactionParams {
   transactionDate?: string;
   description?: string;
   note?: string;
+  tagIds?: number[];
 }
 
 export interface QueryTransactionParams {
@@ -28,6 +30,8 @@ export interface QueryTransactionParams {
   startDate?: string;
   endDate?: string;
   keyword?: string;
+  tagIds?: number[];
+  tagMode?: 'AND' | 'OR';
   page?: number;
   pageSize?: number;
 }

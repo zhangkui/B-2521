@@ -75,11 +75,26 @@ export class TransactionsService {
       throw new BadRequestException('账户余额不足');
     }
 
+    const tagIds = createTransactionDto.tagIds || [];
+    if (tagIds.length > 0) {
+      const tags = await this.prisma.tag.findMany({
+        where: { id: { in: tagIds }, userId },
+      });
+      if (tags.length !== tagIds.length) {
+        throw new BadRequestException('部分标签不存在或无权访问');
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const transaction = await tx.transaction.create({
         data: {
-          ...createTransactionDto,
+          accountId: createTransactionDto.accountId,
+          categoryId: createTransactionDto.categoryId,
+          type: createTransactionDto.type,
+          amount: createTransactionDto.amount,
           transactionDate: new Date(createTransactionDto.transactionDate),
+          description: createTransactionDto.description,
+          note: createTransactionDto.note,
           userId,
         },
         include: {
@@ -87,6 +102,15 @@ export class TransactionsService {
           category: { select: { id: true, name: true, icon: true, color: true, type: true } },
         },
       });
+
+      if (tagIds.length > 0) {
+        await tx.transactionTag.createMany({
+          data: tagIds.map((tagId) => ({
+            transactionId: transaction.id,
+            tagId,
+          })),
+        });
+      }
 
       await tx.account.update({
         where: { id: createTransactionDto.accountId },
@@ -100,7 +124,18 @@ export class TransactionsService {
         },
       });
 
-      return transaction;
+      const transactionWithTags = await tx.transaction.findUnique({
+        where: { id: transaction.id },
+        include: {
+          account: { select: { id: true, name: true, icon: true, color: true } },
+          category: { select: { id: true, name: true, icon: true, color: true, type: true } },
+          tags: {
+            include: { tag: true },
+          },
+        },
+      });
+
+      return transactionWithTags;
     });
 
     return result;
@@ -138,6 +173,23 @@ export class TransactionsService {
       ];
     }
 
+    if (query.tagIds && query.tagIds.length > 0) {
+      const tagMode = query.tagMode || 'OR';
+      if (tagMode === 'AND') {
+        where.AND = query.tagIds.map((tagId) => ({
+          tags: {
+            some: { tagId },
+          },
+        }));
+      } else {
+        where.tags = {
+          some: {
+            tagId: { in: query.tagIds },
+          },
+        };
+      }
+    }
+
     const [list, total] = await Promise.all([
       this.prisma.transaction.findMany({
         where,
@@ -147,6 +199,11 @@ export class TransactionsService {
         include: {
           account: { select: { id: true, name: true, icon: true, color: true } },
           category: { select: { id: true, name: true, icon: true, color: true, type: true } },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       }),
       this.prisma.transaction.count({ where }),
@@ -186,6 +243,9 @@ export class TransactionsService {
       include: {
         account: { select: { id: true, name: true, icon: true, color: true } },
         category: { select: { id: true, name: true, icon: true, color: true, type: true } },
+        tags: {
+          include: { tag: true },
+        },
       },
     });
 
@@ -224,6 +284,16 @@ export class TransactionsService {
 
     await this.validateAccount(userId, newAccountId);
     await this.validateCategory(userId, newCategoryId, newType);
+
+    const tagIds = updateTransactionDto.tagIds;
+    if (tagIds && tagIds.length > 0) {
+      const tags = await this.prisma.tag.findMany({
+        where: { id: { in: tagIds }, userId },
+      });
+      if (tags.length !== tagIds.length) {
+        throw new BadRequestException('部分标签不存在或无权访问');
+      }
+    }
 
     const oldAccountId = existing.accountId;
     const oldType = existing.type;
@@ -270,17 +340,49 @@ export class TransactionsService {
         });
       }
 
-      return tx.transaction.update({
+      const updateData: any = {};
+      if (updateTransactionDto.accountId !== undefined) updateData.accountId = updateTransactionDto.accountId;
+      if (updateTransactionDto.categoryId !== undefined) updateData.categoryId = updateTransactionDto.categoryId;
+      if (updateTransactionDto.type !== undefined) updateData.type = updateTransactionDto.type;
+      if (updateTransactionDto.amount !== undefined) updateData.amount = updateTransactionDto.amount;
+      if (updateTransactionDto.transactionDate !== undefined) {
+        updateData.transactionDate = new Date(updateTransactionDto.transactionDate);
+      }
+      if (updateTransactionDto.description !== undefined) updateData.description = updateTransactionDto.description;
+      if (updateTransactionDto.note !== undefined) updateData.note = updateTransactionDto.note;
+
+      const updated = await tx.transaction.update({
         where: { id },
-        data: {
-          ...updateTransactionDto,
-          transactionDate: updateTransactionDto.transactionDate
-            ? new Date(updateTransactionDto.transactionDate)
-            : undefined,
-        },
+        data: updateData,
         include: {
           account: { select: { id: true, name: true, icon: true, color: true } },
           category: { select: { id: true, name: true, icon: true, color: true, type: true } },
+        },
+      });
+
+      if (tagIds !== undefined) {
+        await tx.transactionTag.deleteMany({
+          where: { transactionId: id },
+        });
+
+        if (tagIds.length > 0) {
+          await tx.transactionTag.createMany({
+            data: tagIds.map((tagId) => ({
+              transactionId: id,
+              tagId,
+            })),
+          });
+        }
+      }
+
+      return tx.transaction.findUnique({
+        where: { id },
+        include: {
+          account: { select: { id: true, name: true, icon: true, color: true } },
+          category: { select: { id: true, name: true, icon: true, color: true, type: true } },
+          tags: {
+            include: { tag: true },
+          },
         },
       });
     });
