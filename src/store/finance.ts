@@ -111,7 +111,6 @@ export const useFinanceStore = defineStore("finance", {
         ...r,
         amount: Number(r.amount),
         type: r.type.toLowerCase() as any,
-        tags: r.tags ? r.tags.map((rt: any) => rt.tag || rt) : [],
       }));
       return result;
     },
@@ -170,25 +169,6 @@ export const useFinanceStore = defineStore("finance", {
       } finally {
         this.loading = false;
       }
-    },
-
-    async loadAccounts() {
-      const accounts = await accountsApi.findAll();
-      this.accounts = accounts.map((a: any) => ({
-        ...a,
-        balance: Number(a.balance),
-        initialBalance: Number(a.initialBalance),
-      }));
-      return this.accounts;
-    },
-
-    async loadCategories() {
-      const categories = await categoriesApi.findAll();
-      this.categories = categories.map((c: any) => ({
-        ...c,
-        type: c.type.toLowerCase(),
-      }));
-      return this.categories;
     },
 
     async addAccount(account: any) {

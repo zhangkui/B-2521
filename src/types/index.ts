@@ -197,23 +197,6 @@ export interface MonthlyReport {
       percentage: number;
     } | null;
   };
-  tagStats: {
-    expenseByTag: Array<{
-      tag: { id: number; name: string; color: string | null };
-      totalAmount: number;
-      count: number;
-      percentage: number;
-    }>;
-    incomeByTag: Array<{
-      tag: { id: number; name: string; color: string | null };
-      totalAmount: number;
-      count: number;
-      percentage: number;
-    }>;
-    untaggedExpense: number;
-    untaggedIncome: number;
-  };
-  narrative: string;
   dailyStats: {
     labels: string[];
     income: number[];

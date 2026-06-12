@@ -115,13 +115,6 @@ export class RecurringService {
     if (query.isActive !== undefined) {
       where.isActive = query.isActive;
     }
-    if (query.tagIds && query.tagIds.length > 0) {
-      where.tags = {
-        some: {
-          tagId: { in: query.tagIds },
-        },
-      };
-    }
 
     const [list, total] = await Promise.all([
       this.prisma.recurringTransaction.findMany({

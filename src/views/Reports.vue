@@ -95,14 +95,6 @@
         </div>
       </div>
 
-      <div v-if="report.narrative" class="narrative-card glass-card">
-        <div class="card-title">
-          <lucide-icon name="Sparkles" :size="18" />
-          <span>本月总结</span>
-        </div>
-        <p class="narrative-text">{{ report.narrative }}</p>
-      </div>
-
       <div class="chart-row">
         <div class="chart-card glass-card">
           <div class="card-title">
@@ -128,88 +120,6 @@
             <span>收入分类占比</span>
           </div>
           <div ref="incomePieRef" class="chart-box pie-chart"></div>
-        </div>
-      </div>
-
-      <div v-if="report.tagStats && (report.tagStats.expenseByTag.length > 0 || report.tagStats.incomeByTag.length > 0)" class="two-col-row">
-        <div class="chart-card glass-card">
-          <div class="card-title">
-            <lucide-icon name="Tag" :size="18" />
-            <span>支出标签分布</span>
-          </div>
-          <div class="tag-stats-list">
-            <div
-              v-for="item in report.tagStats.expenseByTag.slice(0, 8)"
-              :key="item.tag.id"
-              class="tag-stat-item"
-            >
-              <div class="tag-stat-left">
-                <span
-                  class="tag-color-dot"
-                  :style="{ backgroundColor: item.tag.color || '#6366f1' }"
-                ></span>
-                <span class="tag-stat-name">{{ item.tag.name }}</span>
-              </div>
-              <div class="tag-stat-right">
-                <span class="tag-stat-amount">¥{{ item.totalAmount.toFixed(2) }}</span>
-                <span class="tag-stat-pct">{{ item.percentage }}%</span>
-              </div>
-            </div>
-            <div v-if="report.tagStats.untaggedExpense > 0" class="tag-stat-item untagged">
-              <div class="tag-stat-left">
-                <span class="tag-color-dot untagged-dot"></span>
-                <span class="tag-stat-name">未标签</span>
-              </div>
-              <div class="tag-stat-right">
-                <span class="tag-stat-amount">¥{{ report.tagStats.untaggedExpense.toFixed(2) }}</span>
-              </div>
-            </div>
-            <el-empty
-              v-if="report.tagStats.expenseByTag.length === 0"
-              description="暂无标签数据"
-              :image-size="60"
-            />
-          </div>
-        </div>
-
-        <div class="chart-card glass-card">
-          <div class="card-title">
-            <lucide-icon name="Tag" :size="18" />
-            <span>收入标签分布</span>
-          </div>
-          <div class="tag-stats-list">
-            <div
-              v-for="item in report.tagStats.incomeByTag.slice(0, 8)"
-              :key="item.tag.id"
-              class="tag-stat-item"
-            >
-              <div class="tag-stat-left">
-                <span
-                  class="tag-color-dot"
-                  :style="{ backgroundColor: item.tag.color || '#10b981' }"
-                ></span>
-                <span class="tag-stat-name">{{ item.tag.name }}</span>
-              </div>
-              <div class="tag-stat-right">
-                <span class="tag-stat-amount">¥{{ item.totalAmount.toFixed(2) }}</span>
-                <span class="tag-stat-pct">{{ item.percentage }}%</span>
-              </div>
-            </div>
-            <div v-if="report.tagStats.untaggedIncome > 0" class="tag-stat-item untagged">
-              <div class="tag-stat-left">
-                <span class="tag-color-dot untagged-dot"></span>
-                <span class="tag-stat-name">未标签</span>
-              </div>
-              <div class="tag-stat-right">
-                <span class="tag-stat-amount">¥{{ report.tagStats.untaggedIncome.toFixed(2) }}</span>
-              </div>
-            </div>
-            <el-empty
-              v-if="report.tagStats.incomeByTag.length === 0"
-              description="暂无标签数据"
-              :image-size="60"
-            />
-          </div>
         </div>
       </div>
 
@@ -449,13 +359,6 @@ const report = ref<MonthlyReport>({
     topExpenseCategory: null,
     topIncomeCategory: null,
   },
-  tagStats: {
-    expenseByTag: [],
-    incomeByTag: [],
-    untaggedExpense: 0,
-    untaggedIncome: 0,
-  },
-  narrative: '',
   dailyStats: {
     labels: [],
     income: [],
@@ -1086,84 +989,6 @@ onUnmounted(() => {
 
 .highlights-card {
   padding: 20px;
-}
-
-.narrative-card {
-  padding: 20px;
-}
-
-.narrative-text {
-  font-size: 0.95rem;
-  line-height: 1.8;
-  color: var(--text-main);
-  margin: 0;
-  padding: 14px 18px;
-  background: var(--background);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-
-.tag-stats-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.tag-stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--background);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-
-.tag-stat-item.untagged {
-  opacity: 0.6;
-}
-
-.tag-stat-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tag-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tag-color-dot.untagged-dot {
-  background: var(--border);
-}
-
-.tag-stat-name {
-  font-weight: 500;
-  font-size: 0.9rem;
-  color: var(--text-main);
-}
-
-.tag-stat-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tag-stat-amount {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  font-family: "JetBrains Mono", monospace;
-}
-
-.tag-stat-pct {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  min-width: 45px;
-  text-align: right;
 }
 
 .highlights-grid {

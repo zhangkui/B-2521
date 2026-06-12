@@ -142,12 +142,6 @@ export class QueryRecurringDto {
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ description: '按标签ID筛选', type: [Number] })
-  @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  tagIds?: number[];
-
   @ApiPropertyOptional({ description: '页码', example: 1 })
   @IsOptional()
   @IsInt()

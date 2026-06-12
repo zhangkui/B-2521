@@ -111,24 +111,6 @@
               <span class="info-label">备注</span>
               <span class="info-value note">{{ item.note }}</span>
             </div>
-            <div class="info-row" v-if="item.tags && item.tags.length > 0">
-              <span class="info-label">标签</span>
-              <div class="tag-list">
-                <el-tag
-                  v-for="tag in item.tags"
-                  :key="tag.id"
-                  size="small"
-                  :style="{
-                    backgroundColor: (tag.color || '#6366f1') + '15',
-                    borderColor: (tag.color || '#6366f1') + '30',
-                    color: tag.color || '#6366f1',
-                  }"
-                  effect="plain"
-                >
-                  {{ tag.name }}
-                </el-tag>
-              </div>
-            </div>
           </div>
 
           <div class="card-footer">
@@ -559,7 +541,6 @@ const handleSubmit = async () => {
         type: form.type.toUpperCase(),
         amount: Number(form.amount),
         endDate: form.endDate || undefined,
-        tagIds: form.tagIds,
       };
 
       if (isEdit.value && editingId.value) {
@@ -577,15 +558,6 @@ const handleSubmit = async () => {
       submitting.value = false;
     }
   });
-};
-
-const handleCreateTag = async (tagName: string) => {
-  try {
-    const newTag = await financeStore.addTag({ name: tagName });
-    form.tagIds.push(newTag.id);
-  } catch (error: any) {
-    ElMessage.error(error.message || "创建标签失败");
-  }
 };
 
 const handleToggleActive = async (item: RecurringTransaction) => {
@@ -840,19 +812,6 @@ const confirmGenerate = async () => {
 .info-value.note {
   white-space: normal;
   line-height: 1.4;
-}
-
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.tag-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
 }
 
 .card-footer {

@@ -35,7 +35,6 @@ export interface QueryRecurringParams {
   categoryId?: number;
   frequency?: RecurringFrequency;
   isActive?: boolean;
-  tagIds?: number[];
   page?: number;
   pageSize?: number;
 }
