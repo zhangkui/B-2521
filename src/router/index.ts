@@ -44,21 +44,6 @@ const routes: RouteRecordRaw[] = [
         name: "Categories",
         component: () => import("../views/Categories.vue"),
       },
-      {
-        path: "tags",
-        name: "Tags",
-        component: () => import("../views/Tags.vue"),
-      },
-      {
-        path: "recurring",
-        name: "Recurring",
-        component: () => import("../views/Recurring.vue"),
-      },
-      {
-        path: "reports",
-        name: "Reports",
-        component: () => import("../views/Reports.vue"),
-      },
     ],
   },
 ];

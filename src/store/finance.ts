@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { Transaction, Category, Account, Budget, BudgetSummary, TransactionType, Tag, RecurringTransaction, RecurringFrequency } from "../types";
+import { Transaction, Category, Account, Budget, BudgetSummary, TransactionType } from "../types";
 import { accountsApi } from "../api/accounts";
 import { categoriesApi } from "../api/categories";
 import { budgetsApi } from "../api/budgets";
@@ -7,8 +7,6 @@ import {
   transactionsApi,
   QueryTransactionParams,
 } from "../api/transactions";
-import { tagsApi } from "../api/tags";
-import { recurringApi } from "../api/recurring";
 import dayjs from "dayjs";
 
 export const useFinanceStore = defineStore("finance", {
@@ -29,8 +27,6 @@ export const useFinanceStore = defineStore("finance", {
     accounts: [] as Account[],
     budgets: [] as Budget[],
     budgetSummary: null as BudgetSummary | null,
-    tags: [] as Tag[],
-    recurringTransactions: [] as RecurringTransaction[],
     loading: false,
   }),
 
@@ -72,81 +68,27 @@ export const useFinanceStore = defineStore("finance", {
 
   actions: {
     async initialize() {
-      await Promise.all([this.loadAccounts(), this.loadCategories(), this.loadTags()]);
+      await Promise.all([this.loadAccounts(), this.loadCategories()]);
     },
 
-    async loadTags() {
-      const tags = await tagsApi.findAll();
-      this.tags = tags;
-      return this.tags;
-    },
-
-    async addTag(params: { name: string; color?: string; sortOrder?: number }) {
-      const created = await tagsApi.create(params);
-      await this.loadTags();
-      return created;
-    },
-
-    async updateTag(id: number, params: any) {
-      const result = await tagsApi.update(id, params);
-      await this.loadTags();
-      return result;
-    },
-
-    async deleteTag(id: number) {
-      const result = await tagsApi.remove(id);
-      await this.loadTags();
-      return result;
-    },
-
-    async updateTransactionTags(transactionId: number, tagIds: number[]) {
-      const result = await tagsApi.updateTransactionTags(transactionId, tagIds);
-      await this.loadTransactions();
-      return result;
-    },
-
-    async loadRecurring(params?: any) {
-      const result = await recurringApi.findAll({ pageSize: 100, ...params });
-      this.recurringTransactions = result.list.map((r: any) => ({
-        ...r,
-        amount: Number(r.amount),
-        type: r.type.toLowerCase() as any,
+    async loadAccounts() {
+      const accounts = await accountsApi.findAll();
+      this.accounts = accounts.map((a) => ({
+        ...a,
+        balance: Number(a.balance),
+        initialBalance: Number(a.initialBalance),
+        visible: (a as any).visible ?? true,
       }));
-      return result;
+      return this.accounts;
     },
 
-    async addRecurring(recurring: any) {
-      const created = await recurringApi.create({
-        ...recurring,
-        type: recurring.type?.toUpperCase(),
-        amount: Number(recurring.amount),
-      });
-      await this.loadRecurring();
-      return created;
-    },
-
-    async updateRecurring(id: number, data: any) {
-      const result = await recurringApi.update(id, {
-        ...data,
-        type: data.type?.toUpperCase(),
-        amount: data.amount ? Number(data.amount) : undefined,
-      });
-      await this.loadRecurring();
-      return result;
-    },
-
-    async deleteRecurring(id: number) {
-      const result = await recurringApi.remove(id);
-      await this.loadRecurring();
-      return result;
-    },
-
-    async generateRecurring(id: number, untilDate?: string) {
-      const result = await recurringApi.generate(id, untilDate);
-      await this.loadTransactions();
-      await this.loadAccounts();
-      await this.loadRecurring();
-      return result;
+    async loadCategories() {
+      const categories = await categoriesApi.findAll();
+      this.categories = categories.map((c) => ({
+        ...c,
+        type: c.type.toLowerCase() as any,
+      }));
+      return this.categories;
     },
 
     async loadTransactions(params?: QueryTransactionParams) {
@@ -157,11 +99,10 @@ export const useFinanceStore = defineStore("finance", {
           pageSize: 1000,
           ...params,
         });
-        this.transactions = result.list.map((t: any) => ({
+        this.transactions = result.list.map((t) => ({
           ...t,
           amount: Number(t.amount),
           type: t.type.toLowerCase() as any,
-          tags: t.tags ? t.tags.map((tt: any) => tt.tag) : [],
         }));
         this.transactionPagination = result.pagination;
         this.transactionSummary = result.summary;
@@ -237,7 +178,6 @@ export const useFinanceStore = defineStore("finance", {
       accountId: number;
       date: string;
       note?: string;
-      tagIds?: number[];
     }) {
       const result = await transactionsApi.create({
         amount: Number(transaction.amount),
@@ -248,14 +188,13 @@ export const useFinanceStore = defineStore("finance", {
           ? dayjs(transaction.date).toISOString()
           : new Date().toISOString(),
         note: transaction.note,
-        tagIds: transaction.tagIds,
       });
       await this.loadTransactions();
       await this.loadAccounts();
       return result;
     },
 
-    async updateTransaction(updatedTx: Transaction & { date?: string; tagIds?: number[] }) {
+    async updateTransaction(updatedTx: Transaction & { date?: string }) {
       const id = updatedTx.id;
       const result = await transactionsApi.update(id, {
         accountId: Number(updatedTx.accountId),
@@ -267,7 +206,6 @@ export const useFinanceStore = defineStore("finance", {
           : updatedTx.transactionDate,
         note: updatedTx.note ?? undefined,
         description: updatedTx.description ?? undefined,
-        tagIds: updatedTx.tagIds,
       });
       await this.loadTransactions();
       await this.loadAccounts();

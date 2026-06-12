@@ -89,31 +89,6 @@ model Transaction {
   transactionDate DateTime
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  tags        TransactionTag[]
-}
-
-model Tag {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  color     String?
-  sortOrder Int       @default(0)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  transactions TransactionTag[]
-  recurringTransactions RecurringTag[]
-
-  @@unique([userId, name])
-}
-
-model TransactionTag {
-  transactionId Int
-  tagId         Int
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([transactionId, tagId])
 }
 
 model Budget {
@@ -128,44 +103,4 @@ model Budget {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, categoryId, month])
-}
-
-enum RecurringFrequency {
-  DAILY
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  QUARTERLY
-  YEARLY
-}
-
-model RecurringTransaction {
-  id          Int                 @id @default(autoincrement())
-  userId      Int
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId   Int
-  account     Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  categoryId  Int
-  category    Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  type        CategoryType
-  amount      Decimal             @db.Decimal(15, 2)
-  description String?
-  note        String?
-  frequency   RecurringFrequency
-  startDate   DateTime
-  endDate     DateTime?
-  lastGeneratedDate DateTime?
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  tags        RecurringTag[]
-}
-
-model RecurringTag {
-  recurringId Int
-  tagId       Int
-  recurring   RecurringTransaction @relation(fields: [recurringId], references: [id], onDelete: Cascade)
-  tag         Tag                 @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([recurringId, tagId])
 }

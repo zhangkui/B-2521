@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsInt, IsNumber, IsDateString, Min, IsNotEmpty, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsInt, IsNumber, IsDateString, Min, IsNotEmpty } from 'class-validator';
 import { CategoryType } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -35,12 +35,6 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsString()
   note?: string;
-
-  @ApiPropertyOptional({ description: '标签ID列表', type: [Number] })
-  @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  tagIds?: number[];
 }
 
 export class UpdateTransactionDto {
@@ -79,12 +73,6 @@ export class UpdateTransactionDto {
   @IsOptional()
   @IsString()
   note?: string;
-
-  @ApiPropertyOptional({ description: '标签ID列表', type: [Number] })
-  @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  tagIds?: number[];
 }
 
 export class QueryTransactionDto {
@@ -117,16 +105,6 @@ export class QueryTransactionDto {
   @IsOptional()
   @IsString()
   keyword?: string;
-
-  @ApiPropertyOptional({ description: '按标签ID筛选', type: [Number] })
-  @IsOptional()
-  @IsInt({ each: true })
-  tagIds?: number[];
-
-  @ApiPropertyOptional({ description: '标签筛选模式', enum: ['AND', 'OR'], default: 'OR' })
-  @IsOptional()
-  @IsString()
-  tagMode?: 'AND' | 'OR';
 
   @ApiPropertyOptional({ description: '页码', example: 1 })
   @IsOptional()

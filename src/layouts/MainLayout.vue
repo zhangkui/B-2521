@@ -44,18 +44,6 @@
             <el-icon><lucide-icon name="Tags" /></el-icon>
             <span>分类管理</span>
           </el-menu-item>
-          <el-menu-item index="/tags">
-            <el-icon><lucide-icon name="Tag" /></el-icon>
-            <span>标签管理</span>
-          </el-menu-item>
-          <el-menu-item index="/recurring">
-            <el-icon><lucide-icon name="Repeat" /></el-icon>
-            <span>周期记账</span>
-          </el-menu-item>
-          <el-menu-item index="/reports">
-            <el-icon><lucide-icon name="FileText" /></el-icon>
-            <span>月度复盘</span>
-          </el-menu-item>
         </el-menu>
 
         <div class="sidebar-footer">
@@ -156,18 +144,6 @@
         <el-menu-item index="/categories">
           <el-icon><lucide-icon name="Tags" /></el-icon>
           <span>分类管理</span>
-        </el-menu-item>
-        <el-menu-item index="/tags">
-          <el-icon><lucide-icon name="Tag" /></el-icon>
-          <span>标签管理</span>
-        </el-menu-item>
-        <el-menu-item index="/recurring">
-          <el-icon><lucide-icon name="Repeat" /></el-icon>
-          <span>周期记账</span>
-        </el-menu-item>
-        <el-menu-item index="/reports">
-          <el-icon><lucide-icon name="FileText" /></el-icon>
-          <span>月度复盘</span>
         </el-menu-item>
       </el-menu>
       <div class="sidebar-footer mobile-footer">
@@ -285,9 +261,6 @@ const pageTitle = computed(() => {
     "/budget": "预算管理",
     "/accounts": "账户管理",
     "/categories": "分类管理",
-    "/tags": "标签管理",
-    "/recurring": "周期记账",
-    "/reports": "月度复盘",
   };
   return titles[route.path] || "智慧记账";
 });
