@@ -44,6 +44,24 @@
             <el-icon><lucide-icon name="Tags" /></el-icon>
             <span>分类管理</span>
           </el-menu-item>
+          <el-sub-menu index="tags-menu">
+            <template #title>
+              <el-icon><lucide-icon name="Bookmark" /></el-icon>
+              <span>标签分析</span>
+            </template>
+            <el-menu-item index="/tag-stats">
+              <el-icon><lucide-icon name="PieChart" /></el-icon>
+              <span>标签统计</span>
+            </el-menu-item>
+            <el-menu-item index="/tag-trend">
+              <el-icon><lucide-icon name="TrendingUp" /></el-icon>
+              <span>趋势分析</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item index="/reports">
+            <el-icon><lucide-icon name="FileText" /></el-icon>
+            <span>报表中心</span>
+          </el-menu-item>
         </el-menu>
 
         <div class="sidebar-footer">
@@ -144,6 +162,24 @@
         <el-menu-item index="/categories">
           <el-icon><lucide-icon name="Tags" /></el-icon>
           <span>分类管理</span>
+        </el-menu-item>
+        <el-sub-menu index="tags-menu">
+          <template #title>
+            <el-icon><lucide-icon name="Bookmark" /></el-icon>
+            <span>标签分析</span>
+          </template>
+          <el-menu-item index="/tag-stats">
+            <el-icon><lucide-icon name="PieChart" /></el-icon>
+            <span>标签统计</span>
+          </el-menu-item>
+          <el-menu-item index="/tag-trend">
+            <el-icon><lucide-icon name="TrendingUp" /></el-icon>
+            <span>趋势分析</span>
+          </el-menu-item>
+        </el-sub-menu>
+        <el-menu-item index="/reports">
+          <el-icon><lucide-icon name="FileText" /></el-icon>
+          <span>报表中心</span>
         </el-menu-item>
       </el-menu>
       <div class="sidebar-footer mobile-footer">
@@ -261,6 +297,9 @@ const pageTitle = computed(() => {
     "/budget": "预算管理",
     "/accounts": "账户管理",
     "/categories": "分类管理",
+    "/tag-stats": "标签统计总览",
+    "/tag-trend": "标签趋势分析",
+    "/reports": "报表中心",
   };
   return titles[route.path] || "智慧记账";
 });

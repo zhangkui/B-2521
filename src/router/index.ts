@@ -44,6 +44,21 @@ const routes: RouteRecordRaw[] = [
         name: "Categories",
         component: () => import("../views/Categories.vue"),
       },
+      {
+        path: "tag-stats",
+        name: "TagStats",
+        component: () => import("../views/TagStats.vue"),
+      },
+      {
+        path: "tag-trend",
+        name: "TagTrend",
+        component: () => import("../views/TagTrend.vue"),
+      },
+      {
+        path: "reports",
+        name: "Reports",
+        component: () => import("../views/Reports.vue"),
+      },
     ],
   },
 ];
