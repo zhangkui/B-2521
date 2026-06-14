@@ -161,3 +161,97 @@ export interface DashboardChartData {
   income: number[];
   expense: number[];
 }
+
+export interface Tag {
+  id: number;
+  userId: number;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TagStatItem {
+  tag: Tag;
+  income: {
+    amount: number;
+    count: number;
+    percentage: number;
+  };
+  expense: {
+    amount: number;
+    count: number;
+    percentage: number;
+  };
+  total: {
+    amount: number;
+    count: number;
+  };
+}
+
+export interface TagStatsResponse {
+  summary: {
+    incomeTotal: number;
+    expenseTotal: number;
+    netTotal: number;
+    transactionCount: number;
+  };
+  stats: TagStatItem[];
+}
+
+export interface TagTrendLabel {
+  key: string;
+  label: string;
+}
+
+export interface TagTrendItem {
+  tagId: number;
+  tagName: string;
+  labels: TagTrendLabel[];
+  income: number[];
+  expense: number[];
+  count: number[];
+  incomeChange: number;
+  expenseChange: number;
+}
+
+export interface TagTrendResponse {
+  granularity: "day" | "week" | "month";
+  labels: TagTrendLabel[];
+  trends: TagTrendItem[];
+}
+
+export type ReportPeriod = "WEEKLY" | "MONTHLY";
+
+export interface Report {
+  id: number;
+  userId: number;
+  title: string;
+  period: ReportPeriod;
+  periodKey: string;
+  startDate: string;
+  endDate: string;
+  content: any;
+  createdAt: string;
+}
+
+export interface ReportSubscription {
+  id: number;
+  userId: number;
+  period: ReportPeriod;
+  isActive: boolean;
+  lastGeneratedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportListResponse {
+  list: Report[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
