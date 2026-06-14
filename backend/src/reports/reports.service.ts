@@ -137,6 +137,67 @@ export class ReportsService {
     return { message: '报表已删除' };
   }
 
+  async generateReportsForPeriod(period: ReportPeriod) {
+    const subscriptions = await this.prisma.reportSubscription.findMany({
+      where: { period, isActive: true },
+    });
+
+    const results = [];
+    for (const sub of subscriptions) {
+      try {
+        const periodKey = this.getPreviousPeriodKey(period);
+        const { startDate, endDate } = this.getDateRange(period, periodKey);
+        const title = this.generateTitle(period, periodKey);
+
+        const existing = await this.prisma.report.findUnique({
+          where: { userId_period_periodKey: { userId: sub.userId, period, periodKey } },
+        });
+        if (existing) {
+          results.push({ userId: sub.userId, status: 'existed', reportId: existing.id });
+          continue;
+        }
+
+        const content = await this.buildReportContent(sub.userId, startDate, endDate);
+        const report = await this.prisma.report.create({
+          data: {
+            userId: sub.userId,
+            title,
+            period,
+            periodKey,
+            startDate,
+            endDate,
+            content,
+          },
+        });
+
+        await this.prisma.reportSubscription.update({
+          where: { id: sub.id },
+          data: { lastGeneratedAt: new Date() },
+        });
+
+        results.push({ userId: sub.userId, status: 'created', reportId: report.id });
+      } catch (error) {
+        results.push({ userId: sub.userId, status: 'error', error: String(error) });
+      }
+    }
+
+    return { total: subscriptions.length, results };
+  }
+
+  private getPreviousPeriodKey(period: ReportPeriod): string {
+    const now = new Date();
+    if (period === ReportPeriod.MONTHLY) {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+    } else {
+      const lastWeek = new Date(now);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      const year = lastWeek.getFullYear();
+      const weekNum = this.getWeekNumber(lastWeek);
+      return `${year}-W${weekNum}`;
+    }
+  }
+
   private resolvePeriod(period: ReportPeriod, periodKey?: string) {
     if (periodKey) return { period, periodKey };
 

@@ -57,7 +57,17 @@ const routes: RouteRecordRaw[] = [
       {
         path: "reports",
         name: "Reports",
-        component: () => import("../views/Reports.vue"),
+        component: () => import("../views/ReportHistory.vue"),
+      },
+      {
+        path: "report-history",
+        name: "ReportHistory",
+        component: () => import("../views/ReportHistory.vue"),
+      },
+      {
+        path: "report-subscription",
+        name: "ReportSubscription",
+        component: () => import("../views/ReportSubscription.vue"),
       },
     ],
   },

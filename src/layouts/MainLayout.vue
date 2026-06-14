@@ -62,6 +62,20 @@
             <el-icon><lucide-icon name="FileText" /></el-icon>
             <span>报表中心</span>
           </el-menu-item>
+          <el-sub-menu index="reports-menu">
+            <template #title>
+              <el-icon><lucide-icon name="BookOpen" /></el-icon>
+              <span>报表管理</span>
+            </template>
+            <el-menu-item index="/report-history">
+              <el-icon><lucide-icon name="FileArchive" /></el-icon>
+              <span>历史报表</span>
+            </el-menu-item>
+            <el-menu-item index="/report-subscription">
+              <el-icon><lucide-icon name="BellRing" /></el-icon>
+              <span>定时订阅</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
         <div class="sidebar-footer">
@@ -181,6 +195,20 @@
           <el-icon><lucide-icon name="FileText" /></el-icon>
           <span>报表中心</span>
         </el-menu-item>
+        <el-sub-menu index="reports-menu">
+          <template #title>
+            <el-icon><lucide-icon name="BookOpen" /></el-icon>
+            <span>报表管理</span>
+          </template>
+          <el-menu-item index="/report-history">
+            <el-icon><lucide-icon name="FileArchive" /></el-icon>
+            <span>历史报表</span>
+          </el-menu-item>
+          <el-menu-item index="/report-subscription">
+            <el-icon><lucide-icon name="BellRing" /></el-icon>
+            <span>定时订阅</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
       <div class="sidebar-footer mobile-footer">
         <div class="user-block">
@@ -299,7 +327,9 @@ const pageTitle = computed(() => {
     "/categories": "分类管理",
     "/tag-stats": "标签统计总览",
     "/tag-trend": "标签趋势分析",
-    "/reports": "报表中心",
+    "/reports": "历史报表中心",
+    "/report-history": "历史报表中心",
+    "/report-subscription": "定时报表订阅",
   };
   return titles[route.path] || "智慧记账";
 });

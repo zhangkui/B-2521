@@ -1,159 +1,92 @@
 <template>
-  <div class="reports-wrapper">
-    <el-tabs v-model="activeTab" class="reports-tabs">
-      <el-tab-pane label="历史报表" name="history">
-        <div class="report-history">
-          <div class="toolbar glass-card">
-            <div class="toolbar-left">
-              <el-select
-                v-model="filterPeriod"
-                placeholder="全部周期"
-                size="default"
-                @change="loadReports"
-                style="width: 140px"
-              >
-                <el-option label="全部周期" value="" />
-                <el-option label="周报" value="WEEKLY" />
-                <el-option label="月报" value="MONTHLY" />
-              </el-select>
-            </div>
-            <div class="toolbar-right">
-              <el-button type="primary" @click="showGenerateDialog = true">
-                <lucide-icon name="FilePlus" :size="16" />
-                <span class="ml-2">生成报表</span>
-              </el-button>
-            </div>
+  <div class="report-history-wrapper">
+    <div class="toolbar glass-card">
+      <div class="toolbar-left">
+        <el-select
+          v-model="filterPeriod"
+          placeholder="全部周期"
+          size="default"
+          @change="loadReports"
+          style="width: 140px"
+        >
+          <el-option label="全部周期" value="" />
+          <el-option label="周报" value="WEEKLY" />
+          <el-option label="月报" value="MONTHLY" />
+        </el-select>
+      </div>
+      <div class="toolbar-right">
+        <el-button type="primary" @click="showGenerateDialog = true">
+          <lucide-icon name="FilePlus" :size="16" />
+          <span class="ml-2">生成报表</span>
+        </el-button>
+      </div>
+    </div>
+
+    <div class="report-list" v-loading="loading">
+      <div
+        v-for="report in reports"
+        :key="report.id"
+        class="report-card glass-card"
+        @click="viewReport(report.id)"
+      >
+        <div class="card-icon" :class="report.period.toLowerCase()">
+          <lucide-icon name="FileText" :size="24" />
+        </div>
+        <div class="card-info">
+          <h4 class="card-title">{{ report.title }}</h4>
+          <div class="card-meta">
+            <span class="period-tag" :class="report.period.toLowerCase()">
+              {{ report.period === "WEEKLY" ? "周报" : "月报" }}
+            </span>
+            <span class="date">
+              {{ formatDate(report.startDate) }} - {{ formatDate(report.endDate) }}
+            </span>
           </div>
-
-          <div class="report-list" v-loading="loading">
-            <div
-              v-for="report in reports"
-              :key="report.id"
-              class="report-card glass-card"
-              @click="viewReport(report.id)"
-            >
-              <div class="card-icon" :class="report.period.toLowerCase()">
-                <lucide-icon name="FileText" :size="24" />
-              </div>
-              <div class="card-info">
-                <h4 class="card-title">{{ report.title }}</h4>
-                <div class="card-meta">
-                  <span class="period-tag" :class="report.period.toLowerCase()">
-                    {{ report.period === "WEEKLY" ? "周报" : "月报" }}
-                  </span>
-                  <span class="date">
-                    {{ formatDate(report.startDate) }} - {{ formatDate(report.endDate) }}
-                  </span>
-                </div>
-                <div class="card-stats">
-                  <div class="stat-item">
-                    <span class="stat-label">收入</span>
-                    <span class="stat-value income">¥{{ report.content?.summary?.totalIncome?.toFixed(2) || "0.00" }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">支出</span>
-                    <span class="stat-value expense">¥{{ report.content?.summary?.totalExpense?.toFixed(2) || "0.00" }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">结余</span>
-                    <span class="stat-value">¥{{ report.content?.summary?.netBalance?.toFixed(2) || "0.00" }}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">笔数</span>
-                    <span class="stat-value">{{ report.content?.summary?.transactionCount || 0 }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="card-actions">
-                <el-button type="primary" link @click.stop="viewReport(report.id)">
-                  查看详情
-                </el-button>
-                <el-button type="danger" link @click.stop="deleteReport(report.id)">
-                  删除
-                </el-button>
-              </div>
+          <div class="card-stats">
+            <div class="stat-item">
+              <span class="stat-label">收入</span>
+              <span class="stat-value income">¥{{ (report.content?.summary?.totalIncome || 0).toFixed(2) }}</span>
             </div>
-
-            <el-empty
-              v-if="!loading && reports.length === 0"
-              description="暂无报表记录"
-              :image-size="100"
-            />
-          </div>
-
-          <div class="pagination-bar" v-if="totalPages > 1">
-            <el-pagination
-              v-model:current-page="page"
-              :page-size="pageSize"
-              :total="total"
-              layout="prev, pager, next, total"
-              @current-change="loadReports"
-            />
+            <div class="stat-item">
+              <span class="stat-label">支出</span>
+              <span class="stat-value expense">¥{{ (report.content?.summary?.totalExpense || 0).toFixed(2) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">结余</span>
+              <span class="stat-value">¥{{ (report.content?.summary?.netBalance || 0).toFixed(2) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">笔数</span>
+              <span class="stat-value">{{ report.content?.summary?.transactionCount || 0 }}</span>
+            </div>
           </div>
         </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="定时订阅" name="subscription">
-        <div class="subscription-section">
-          <div class="intro-card glass-card">
-            <div class="intro-icon">
-              <lucide-icon name="BellRing" :size="28" />
-            </div>
-            <div class="intro-content">
-              <h3>定时报表订阅</h3>
-              <p>设置后系统将自动按周/月为您生成财务报表，随时掌握财务状况变化。</p>
-            </div>
-          </div>
-
-          <div class="subscription-list">
-            <div class="sub-card glass-card" v-for="periodType in periodOptions" :key="periodType.value">
-              <div class="sub-left">
-                <div class="sub-icon" :class="periodType.value.toLowerCase()">
-                  <lucide-icon :name="periodType.icon" :size="22" />
-                </div>
-                <div class="sub-info">
-                  <h4 class="sub-title">{{ periodType.label }}报表订阅</h4>
-                  <p class="sub-desc">{{ periodType.desc }}</p>
-                </div>
-              </div>
-              <div class="sub-right">
-                <div v-if="getSubscription(periodType.value)" class="sub-status">
-                  <el-switch
-                    v-model="subscriptionsMap[periodType.value]!.isActive"
-                    @change="(val: boolean) => toggleSubscription(periodType.value, val)"
-                  />
-                  <span class="status-text">
-                    {{ subscriptionsMap[periodType.value]?.isActive ? "已启用" : "已停用" }}
-                  </span>
-                  <span class="last-gen" v-if="subscriptionsMap[periodType.value]?.lastGeneratedAt">
-                    上次生成：{{ formatDate(subscriptionsMap[periodType.value]!.lastGeneratedAt!) }}
-                  </span>
-                </div>
-                <div v-else class="sub-action">
-                  <el-button type="primary" @click="createSubscription(periodType.value)">
-                    <lucide-icon name="Plus" :size="16" />
-                    <span class="ml-2">开通订阅</span>
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tips-card glass-card">
-            <div class="tips-header">
-              <lucide-icon name="Lightbulb" :size="18" />
-              <span>温馨提示</span>
-            </div>
-            <ul class="tips-list">
-              <li>周报将在每周一自动生成上一周的财务报表</li>
-              <li>月报将在每月1日自动生成上一月的财务报表</li>
-              <li>您可以随时在「历史报表」中查看和管理所有已生成的报表</li>
-              <li>也可以点击上方「生成报表」按钮手动创建任意周期的报表</li>
-            </ul>
-          </div>
+        <div class="card-actions">
+          <el-button type="primary" link @click.stop="viewReport(report.id)">
+            查看详情
+          </el-button>
+          <el-button type="danger" link @click.stop="deleteReport(report.id)">
+            删除
+          </el-button>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+      </div>
+
+      <el-empty
+        v-if="!loading && reports.length === 0"
+        description="暂无报表记录"
+        :image-size="100"
+      />
+    </div>
+
+    <div class="pagination-bar" v-if="totalPages > 1">
+      <el-pagination
+        v-model:current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        layout="prev, pager, next, total"
+        @current-change="loadReports"
+      />
+    </div>
 
     <el-dialog
       v-model="showGenerateDialog"
@@ -209,15 +142,15 @@
         <div class="detail-summary">
           <div class="summary-item income">
             <span class="label">总收入</span>
-            <span class="value">¥{{ currentReport.content?.summary?.totalIncome?.toFixed(2) || "0.00" }}</span>
+            <span class="value">¥{{ (currentReport.content?.summary?.totalIncome || 0).toFixed(2) }}</span>
           </div>
           <div class="summary-item expense">
             <span class="label">总支出</span>
-            <span class="value">¥{{ currentReport.content?.summary?.totalExpense?.toFixed(2) || "0.00" }}</span>
+            <span class="value">¥{{ (currentReport.content?.summary?.totalExpense || 0).toFixed(2) }}</span>
           </div>
           <div class="summary-item balance">
             <span class="label">结余</span>
-            <span class="value">¥{{ currentReport.content?.summary?.netBalance?.toFixed(2) || "0.00" }}</span>
+            <span class="value">¥{{ (currentReport.content?.summary?.netBalance || 0).toFixed(2) }}</span>
           </div>
         </div>
 
@@ -278,12 +211,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { reportsApi } from "../api/reports";
 import {
   Report,
-  ReportSubscription,
   ReportPeriod,
   ReportListResponse,
 } from "../types";
@@ -293,9 +225,6 @@ import isoWeek from "dayjs/plugin/isoWeek";
 
 dayjs.extend(isoWeek);
 
-const router = useRouter();
-
-const activeTab = ref("history");
 const loading = ref(false);
 const generating = ref(false);
 
@@ -305,9 +234,6 @@ const pageSize = ref(10);
 const total = ref(0);
 const filterPeriod = ref("");
 
-const subscriptions = ref<ReportSubscription[]>([]);
-const subscriptionsMap = reactive<Record<string, ReportSubscription>>({});
-
 const showGenerateDialog = ref(false);
 const generatePeriod = ref<ReportPeriod>("MONTHLY");
 const generateMonth = ref(dayjs().format("YYYY-MM"));
@@ -315,21 +241,6 @@ const generateWeek = ref("");
 
 const showDetailDrawer = ref(false);
 const currentReport = ref<Report | null>(null);
-
-const periodOptions = [
-  {
-    value: "WEEKLY",
-    label: "每周",
-    icon: "Calendar",
-    desc: "每周一自动生成上周财务报表",
-  },
-  {
-    value: "MONTHLY",
-    label: "每月",
-    icon: "CalendarDays",
-    desc: "每月1日自动生成上月财务报表",
-  },
-];
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value));
 
@@ -373,48 +284,9 @@ const loadReports = async () => {
     total.value = result.pagination.total;
   } catch (e) {
     console.error("加载报表列表失败", e);
+    ElMessage.error("加载报表列表失败");
   } finally {
     loading.value = false;
-  }
-};
-
-const loadSubscriptions = async () => {
-  try {
-    subscriptions.value = await reportsApi.getSubscriptions();
-    subscriptions.value.forEach((sub) => {
-      subscriptionsMap[sub.period] = sub;
-    });
-  } catch (e) {
-    console.error("加载订阅列表失败", e);
-  }
-};
-
-const getSubscription = (period: string): ReportSubscription | undefined => {
-  return subscriptionsMap[period];
-};
-
-const createSubscription = async (period: string) => {
-  try {
-    const sub = await reportsApi.createSubscription({
-      period: period as ReportPeriod,
-    });
-    subscriptionsMap[period] = sub;
-    ElMessage.success("订阅成功");
-  } catch (e: any) {
-    ElMessage.error(e.message || "订阅失败");
-  }
-};
-
-const toggleSubscription = async (period: string, isActive: boolean) => {
-  const sub = subscriptionsMap[period];
-  if (!sub) return;
-
-  try {
-    await reportsApi.updateSubscription(sub.id, { isActive });
-    ElMessage.success(isActive ? "已启用订阅" : "已停用订阅");
-  } catch (e: any) {
-    subscriptionsMap[period].isActive = !isActive;
-    ElMessage.error(e.message || "操作失败");
   }
 };
 
@@ -482,23 +354,14 @@ onMounted(() => {
     generateWeek.value = weekOptions.value[0].value;
   }
   loadReports();
-  loadSubscriptions();
 });
 </script>
 
 <style scoped>
-.reports-wrapper {
+.report-history-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-.reports-tabs :deep(.el-tabs__header) {
-  margin: 0 0 20px 0;
-}
-
-.reports-tabs :deep(.el-tabs__nav-wrap::after) {
-  background-color: var(--border);
+  gap: 16px;
 }
 
 .toolbar {
@@ -506,7 +369,6 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
 .ml-2 {
@@ -630,141 +492,6 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 20px;
-}
-
-.subscription-section {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.intro-card {
-  padding: 24px;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  background: linear-gradient(135deg, #6366f115, #8b5cf615);
-  border: 1px solid #6366f130;
-}
-
-.intro-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.intro-content h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 6px 0;
-}
-
-.intro-content p {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.subscription-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.sub-card {
-  padding: 22px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sub-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.sub-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.sub-icon.weekly {
-  background: #ecfdf5;
-  color: #10b981;
-}
-.sub-icon.monthly {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.sub-info h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-}
-
-.sub-info p {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.sub-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.sub-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.status-text {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  min-width: 50px;
-}
-
-.last-gen {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.tips-card {
-  padding: 20px 24px;
-  background: var(--background);
-}
-
-.tips-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #d97706;
-  margin-bottom: 12px;
-}
-
-.tips-list {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 2;
 }
 
 .report-detail {
@@ -931,24 +658,6 @@ onMounted(() => {
     flex-direction: row;
     width: 100%;
     justify-content: flex-end;
-  }
-
-  .intro-card {
-    flex-direction: column;
-    text-align: center;
-    padding: 20px;
-  }
-
-  .sub-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 18px;
-  }
-
-  .sub-right {
-    width: 100%;
-    justify-content: space-between;
   }
 
   .category-item {
