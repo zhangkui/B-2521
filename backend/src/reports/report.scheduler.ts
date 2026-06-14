@@ -9,16 +9,19 @@ export class ReportSchedulerService {
 
   constructor(private reportsService: ReportsService) {}
 
-  @Cron(CronExpression.EVERY_MONDAY_1AM, {
+  @Cron('0 0 1 * * 1', {
     name: 'generate_weekly_reports',
     timeZone: 'Asia/Shanghai',
   })
   async handleWeeklyReports() {
-    this.logger.log('开始生成周报...');
+    this.logger.log('开始生成周报（每周一凌晨1点）...');
     try {
       const result = await this.reportsService.generateReportsForPeriod(ReportPeriod.WEEKLY);
+      const created = result.results.filter((r: any) => r.status === 'created').length;
+      const existed = result.results.filter((r: any) => r.status === 'existed').length;
+      const errored = result.results.filter((r: any) => r.status === 'error').length;
       this.logger.log(
-        `周报表生成完成：总计 ${result.total} 个订阅，成功 ${result.results.filter((r) => r.status === 'created').length} 个，已存在 ${result.results.filter((r) => r.status === 'existed').length} 个，失败 ${result.results.filter((r) => r.status === 'error').length} 个`,
+        `周报表生成完成：总计 ${result.total} 个订阅，成功 ${created} 个，已存在 ${existed} 个，失败 ${errored} 个`,
       );
     } catch (error) {
       this.logger.error('周报表生成失败', error);
@@ -30,21 +33,24 @@ export class ReportSchedulerService {
     timeZone: 'Asia/Shanghai',
   })
   async handleMonthlyReports() {
-    this.logger.log('开始生成月报...');
+    this.logger.log('开始生成月报（每月1日零点）...');
     try {
       const result = await this.reportsService.generateReportsForPeriod(ReportPeriod.MONTHLY);
+      const created = result.results.filter((r: any) => r.status === 'created').length;
+      const existed = result.results.filter((r: any) => r.status === 'existed').length;
+      const errored = result.results.filter((r: any) => r.status === 'error').length;
       this.logger.log(
-        `月报表生成完成：总计 ${result.total} 个订阅，成功 ${result.results.filter((r) => r.status === 'created').length} 个，已存在 ${result.results.filter((r) => r.status === 'existed').length} 个，失败 ${result.results.filter((r) => r.status === 'error').length} 个`,
+        `月报表生成完成：总计 ${result.total} 个订阅，成功 ${created} 个，已存在 ${existed} 个，失败 ${errored} 个`,
       );
     } catch (error) {
       this.logger.error('月报表生成失败', error);
     }
   }
 
-  @Cron(CronExpression.EVERY_MINUTE, {
+  @Cron(CronExpression.EVERY_HOUR, {
     name: 'report_scheduler_heartbeat',
   })
-  async handleHeartbeat() {
+  handleHeartbeat() {
     this.logger.debug('定时任务调度器运行正常');
   }
 }

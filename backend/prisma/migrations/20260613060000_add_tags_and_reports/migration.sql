@@ -1,6 +1,3 @@
--- CreateEnum
-CREATE TYPE `ReportPeriod` AS ENUM ('WEEKLY', 'MONTHLY');
-
 -- CreateTable
 CREATE TABLE `Tag` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
@@ -28,7 +25,7 @@ CREATE TABLE `Report` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `userId` INTEGER NOT NULL,
     `title` VARCHAR(191) NOT NULL,
-    `period` `ReportPeriod` NOT NULL,
+    `period` ENUM('WEEKLY', 'MONTHLY') NOT NULL,
     `periodKey` VARCHAR(191) NOT NULL,
     `startDate` DATETIME(3) NOT NULL,
     `endDate` DATETIME(3) NOT NULL,
@@ -43,7 +40,7 @@ CREATE TABLE `Report` (
 CREATE TABLE `ReportSubscription` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `userId` INTEGER NOT NULL,
-    `period` `ReportPeriod` NOT NULL,
+    `period` ENUM('WEEKLY', 'MONTHLY') NOT NULL,
     `isActive` BOOLEAN NOT NULL DEFAULT true,
     `lastGeneratedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
